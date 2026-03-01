@@ -133,3 +133,31 @@ Real-time multiplayer integration
 Behavioral performance analytics
 
 TAMGE is not just a hackathon prototype — it is a scalable foundation for a gamified learning ecosystem.
+
+8. How the Engine Reads Configuration
+
+The engine follows a configuration-driven execution model.
+
+The Game Loader fetches the game-config.json.
+
+The schema validates structure and required fields.
+
+Level Manager initializes Level 1.
+
+Timer Engine activates level timer.
+
+Score Engine tracks performance.
+
+Adaptive Engine evaluates accuracy after level completion.
+
+Based on thresholds:
+
+Skip to higher difficulty
+
+Repeat level
+
+Continue normally
+
+Results are sent to backend leaderboard service.
+
+This ensures the engine remains generic while the game logic is entirely data-driven.
