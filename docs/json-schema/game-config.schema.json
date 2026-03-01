@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TapTap Game Configuration Schema",
+  "type": "object",
+  "required": ["gameId", "gameType", "levels", "scoring", "adaptiveRules"],
+  "properties": {
+    "gameId": {
+      "type": "string",
+      "description": "Unique identifier for the game"
+    },
+    "gameType": {
+      "type": "string",
+      "description": "Type of game (aptitude, coding, memory, logic, etc.)"
+    },
+    "levels": {
+      "type": "array",
+      "description": "List of game levels",
+      "items": {
+        "type": "object",
+        "required": ["levelId", "difficulty", "timer", "questions"],
+        "properties": {
+          "levelId": {
+            "type": "string"
+          },
+          "difficulty": {
+            "type": "string",
+            "enum": ["easy", "medium", "hard"]
+          },
+          "timer": {
+            "type": "number",
+            "description": "Time in seconds for this level"
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["questionId", "questionText", "options", "correctAnswer"],
+              "properties": {
+                "questionId": {
+                  "type": "string"
+                },
+                "questionText": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "correctAnswer": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "scoring": {
+      "type": "object",
+      "required": ["basePoints", "timeBonus", "accuracyWeight"],
+      "properties": {
+        "basePoints": { "type": "number" },
+        "timeBonus": { "type": "number" },
+        "accuracyWeight": { "type": "number" }
+      }
+    },
+    "adaptiveRules": {
+      "type": "object",
+      "required": ["skipThreshold", "repeatThreshold"],
+      "properties": {
+        "skipThreshold": {
+          "type": "number",
+          "description": "Accuracy percentage required to skip difficulty"
+        },
+        "repeatThreshold": {
+          "type": "number",
+          "description": "Accuracy percentage below which level repeats"
+        }
+      }
+    }
+  }
+}
