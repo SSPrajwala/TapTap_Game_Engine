@@ -1,21 +1,152 @@
 {
-  "gameName": "Logical Reasoning Challenge",
-  "plugin": "quiz",
+  "_comment": "Migrated from old logic-game.json. Added: id, title, description, version, proper question ids, adaptiveRules, scoring, ui. Level ids are now strings (not numbers). Questions reference the global pool via questionIds.",
+
+  "id":          "logical-reasoning-v2",
+  "title":       "Logical Reasoning Challenge",
+  "description": "Test your reasoning across three adaptive difficulty levels.",
+  "plugin":      "quiz",
+  "version":     "2.0.0",
+
+  "questions": [
+  {
+    "id": "q-easy-1", "type": "quiz", "difficulty": "easy",
+    "points": 100, "timeLimit": 60,
+    "prompt": "2 + 2 = ?",
+    "options": ["2", "3", "4", "5"], "correctIndex": 2,
+    "explanation": "2 + 2 = 4.", "hint": "Count on your fingers."
+  },
+  {
+    "id": "q-easy-2", "type": "quiz", "difficulty": "easy",
+    "points": 100, "timeLimit": 60,
+    "prompt": "5 - 3 = ?",
+    "options": ["1", "2", "3", "4"], "correctIndex": 1,
+    "explanation": "5 minus 3 = 2.", "hint": "Start at 5, count back 3."
+  },
+  {
+    "id": "q-easy-3", "type": "quiz", "difficulty": "easy",
+    "points": 100, "timeLimit": 60,
+    "prompt": "What color do you get mixing red and blue?",
+    "options": ["Green", "Purple", "Orange", "Brown"], "correctIndex": 1,
+    "explanation": "Red + blue = purple.", "hint": "Think of a royal color."
+  },
+  {
+    "id": "q-easy-4", "type": "quiz", "difficulty": "easy",
+    "points": 100, "timeLimit": 60,
+    "prompt": "How many sides does a triangle have?",
+    "options": ["2", "3", "4", "5"], "correctIndex": 1,
+    "explanation": "A triangle has 3 sides.", "hint": "Tri = three."
+  },
+  {
+    "id": "q-medium-1", "type": "quiz", "difficulty": "medium",
+    "points": 200, "timeLimit": 45,
+    "prompt": "12 ÷ 3 = ?",
+    "options": ["2", "3", "4", "6"], "correctIndex": 2,
+    "explanation": "12 divided by 3 = 4.", "hint": "How many groups of 3 fit into 12?"
+  },
+  {
+    "id": "q-medium-2", "type": "quiz", "difficulty": "medium",
+    "points": 200, "timeLimit": 45,
+    "prompt": "Which number is prime?",
+    "options": ["9", "15", "17", "21"], "correctIndex": 2,
+    "explanation": "17 is only divisible by 1 and itself.", "hint": "A prime has exactly 2 factors."
+  },
+  {
+    "id": "q-medium-3", "type": "quiz", "difficulty": "medium",
+    "points": 200, "timeLimit": 45,
+    "prompt": "What is the square root of 64?",
+    "options": ["6", "7", "8", "9"], "correctIndex": 2,
+    "explanation": "8 × 8 = 64.", "hint": "What number times itself gives 64?"
+  },
+  {
+    "id": "q-medium-4", "type": "quiz", "difficulty": "medium",
+    "points": 200, "timeLimit": 45,
+    "prompt": "Which planet is closest to the Sun?",
+    "options": ["Venus", "Earth", "Mars", "Mercury"], "correctIndex": 3,
+    "explanation": "Mercury is the closest planet to the Sun.", "hint": "It's the smallest planet too."
+  },
+  {
+    "id": "q-hard-1", "type": "quiz", "difficulty": "hard",
+    "points": 400, "timeLimit": 30,
+    "prompt": "If all Bloops are Razzles and all Razzles are Lazzles, are all Bloops definitely Lazzles?",
+    "options": ["Yes", "No", "Cannot be determined", "Only sometimes"], "correctIndex": 0,
+    "explanation": "By transitivity: Bloops → Razzles → Lazzles.", "hint": "Think A→B, B→C, therefore A→C."
+  },
+  {
+    "id": "q-hard-2", "type": "quiz", "difficulty": "hard",
+    "points": 400, "timeLimit": 30,
+    "prompt": "What is 15% of 200?",
+    "options": ["20", "25", "30", "35"], "correctIndex": 2,
+    "explanation": "15/100 × 200 = 30.", "hint": "10% of 200 is 20. Add half of that."
+  },
+  {
+    "id": "q-hard-3", "type": "quiz", "difficulty": "hard",
+    "points": 400, "timeLimit": 30,
+    "prompt": "A train travels 60 km/h for 2.5 hours. How far does it travel?",
+    "options": ["120 km", "140 km", "150 km", "160 km"], "correctIndex": 2,
+    "explanation": "Distance = speed × time = 60 × 2.5 = 150 km.", "hint": "Multiply speed by time."
+  },
+  {
+    "id": "q-hard-4", "type": "quiz", "difficulty": "hard",
+    "points": 400, "timeLimit": 30,
+    "prompt": "What is the next prime after 23?",
+    "options": ["25", "27", "29", "31"], "correctIndex": 2,
+    "explanation": "29 is prime. 25 = 5×5, 27 = 3×9.", "hint": "Check each number: is it divisible by anything?"
+  }
+],
+
   "levels": [
+  {
+    "id": "level-easy",
+    "title": "Level 1 — Easy",
+    "description": "Arithmetic warm-up.",
+    "questionIds": ["q-easy-1", "q-easy-2", "q-easy-3", "q-easy-4"],
+    "passingScore": 50
+  },
+  {
+    "id": "level-medium",
+    "title": "Level 2 — Medium",
+    "description": "Step it up.",
+    "questionIds": ["q-medium-1", "q-medium-2", "q-medium-3", "q-medium-4"],
+    "passingScore": 50,
+    "unlockCondition": { "previousLevelId": "level-easy", "minScore": 40 }
+  },
+  {
+    "id": "level-hard",
+    "title": "Level 3 — Hard",
+    "description": "Logic and reasoning under pressure.",
+    "questionIds": ["q-hard-1", "q-hard-2", "q-hard-3", "q-hard-4"],
+    "passingScore": 60,
+    "unlockCondition": { "previousLevelId": "level-medium", "minScore": 50 }
+  }
+],
+
+  "adaptiveRules": [
     {
-      "levelId": 1,
-      "difficulty": "easy",
-      "timeLimit": 60
+      "condition": { "metric": "accuracy", "operator": ">=", "value": 0.8 },
+      "action":    { "type": "adjustDifficulty", "payload": { "difficulty": "hard" } }
     },
     {
-      "levelId": 2,
-      "difficulty": "medium",
-      "timeLimit": 45
+      "condition": { "metric": "accuracy", "operator": "<", "value": 0.4 },
+      "action":    { "type": "adjustDifficulty", "payload": { "difficulty": "easy" } }
     },
     {
-      "levelId": 3,
-      "difficulty": "hard",
-      "timeLimit": 30
+      "condition": { "metric": "streak", "operator": ">=", "value": 3 },
+      "action":    { "type": "awardBonus", "payload": { "points": 50 } }
     }
-  ]
+  ],
+
+  "scoring": {
+    "basePoints":            100,
+    "timeBonus":             true,
+    "timeBonusPerSecond":    3,
+    "streakMultiplier":      true,
+    "streakThreshold":       3,
+    "streakMultiplierValue": 1.5
+  },
+
+  "ui": {
+    "showTimer":    true,
+    "showProgress": true,
+    "showStreak":   true
+  }
 }

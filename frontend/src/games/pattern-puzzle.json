@@ -1,0 +1,61 @@
+{
+  "id": "pattern-puzzle-v1",
+  "title": "Pattern Puzzle",
+  "description": "Find the hidden pattern and extend the sequence.",
+  "plugin": "puzzle",
+  "version": "1.0.0",
+  "questions": [
+    {
+      "id": "p-easy-1", "type": "puzzle", "difficulty": "easy",
+      "points": 100, "pattern": [2, 4, 6, 8], "sequenceLength": 2,
+      "instruction": "What are the next 2 numbers?", "hint": "Add 2 each time."
+    },
+    {
+      "id": "p-easy-2", "type": "puzzle", "difficulty": "easy",
+      "points": 100, "pattern": [5, 10, 15, 20], "sequenceLength": 2,
+      "instruction": "Continue this sequence.", "hint": "Count by fives."
+    },
+    {
+      "id": "p-medium-1", "type": "puzzle", "difficulty": "medium",
+      "points": 200, "pattern": [3, 6, 9, 12], "sequenceLength": 3,
+      "instruction": "Find the next 3 values.", "hint": "Multiples of 3."
+    },
+    {
+      "id": "p-medium-2", "type": "puzzle", "difficulty": "medium",
+      "points": 200, "pattern": [100, 90, 80, 70], "sequenceLength": 2,
+      "instruction": "Continue the descending sequence.", "hint": "Subtract 10 each time."
+    },
+    {
+      "id": "p-hard-1", "type": "puzzle", "difficulty": "hard",
+      "points": 400, "pattern": [1, 4, 9, 16], "sequenceLength": 2,
+      "instruction": "What comes next? (tricky!)", "hint": "Think square numbers."
+    }
+  ],
+  "levels": [
+    {
+      "id": "puzzle-l1", "title": "Easy Patterns", "description": "Simple arithmetic sequences.",
+      "questionIds": ["p-easy-1", "p-easy-2"], "passingScore": 50
+    },
+    {
+      "id": "puzzle-l2", "title": "Medium Patterns", "description": "Longer sequences.",
+      "questionIds": ["p-medium-1", "p-medium-2"], "passingScore": 50,
+      "unlockCondition": { "previousLevelId": "puzzle-l1", "minScore": 40 }
+    },
+    {
+      "id": "puzzle-l3", "title": "Hard Patterns", "description": "Non-linear sequences.",
+      "questionIds": ["p-hard-1"], "passingScore": 60,
+      "unlockCondition": { "previousLevelId": "puzzle-l2", "minScore": 50 }
+    }
+  ],
+  "adaptiveRules": [
+    {
+      "condition": { "metric": "accuracy", "operator": ">=", "value": 0.9 },
+      "action": { "type": "adjustDifficulty", "payload": { "difficulty": "hard" } }
+    }
+  ],
+  "scoring": {
+    "basePoints": 100, "timeBonus": false, "timeBonusPerSecond": 0,
+    "streakMultiplier": true, "streakThreshold": 2, "streakMultiplierValue": 1.25
+  },
+  "ui": { "showTimer": false, "showProgress": true, "showStreak": true }
+}
