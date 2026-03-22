@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react"
-import type { GamePlugin, PluginRenderProps, FlashcardQuestion, Question, AnswerResult } from "../../types/engine.types"
-
+import type { GamePlugin, PluginRenderProps, FlashcardQuestion, Question } from "../../types/engine.types"
 const FlashcardComponent: React.FC<PluginRenderProps<FlashcardQuestion>> = ({ question, onAnswer }) => {
   const [flipped, setFlipped] = useState(false)
   const [answered, setAnswered] = useState(false)

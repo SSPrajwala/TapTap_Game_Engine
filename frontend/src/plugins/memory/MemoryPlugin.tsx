@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react"
-import type { GamePlugin, PluginRenderProps, MemoryQuestion, Question, AnswerResult } from "../../types/engine.types"
-
+import type { GamePlugin, PluginRenderProps, MemoryQuestion, Question } from "../../types/engine.types"
 interface CardState { id: string; pairId: string; label: string; emoji: string; flipped: boolean; matched: boolean }
 
 const MemoryComponent: React.FC<PluginRenderProps<MemoryQuestion>> = ({ question, onAnswer }) => {

@@ -1,4 +1,4 @@
-import type { LeaderboardEntry, Difficulty } from "../types/engine.types"
+import type { LeaderboardEntry } from "../types/engine.types"
 
 const KEY = "taptap_leaderboard"
 const MAX_ENTRIES = 100

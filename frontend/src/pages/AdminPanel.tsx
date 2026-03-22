@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from "react"
-import type { GameConfig, Question, QuizQuestion, Level } from "../types/engine.types"
-
+import React, { useState } from "react"
+import type { GameConfig, Question, QuizQuestion } from "../types/engine.types"
 interface Props {
   games: GameConfig[]
   onBack: () => void

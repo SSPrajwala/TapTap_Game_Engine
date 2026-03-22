@@ -7,9 +7,9 @@ import { LeaderboardService } from "../engine/LeaderboardService"
 interface Props { config: GameConfig; onBack: () => void }
 
 export const GameRenderer: React.FC<Props> = ({ config, onBack }) => {
-  const { state, engine, currentQuestion, lastResult, isShowingHint, timeRemaining, handleAnswer, handleHint, send } = useGameEngine(config)
+  const { state, currentQuestion, lastResult, isShowingHint, timeRemaining, handleAnswer, handleHint, send } = useGameEngine(config)
   const [playerName, setPlayerName] = useState("")
-  const [nameSubmitted, setNameSubmitted] = useState(false)
+  //const [nameSubmitted, setNameSubmitted] = useState(false) // eslint-disable-line
   const [scoreSaved, setScoreSaved] = useState(false)
 
   const plugin = pluginRegistry.get(config.plugin)
@@ -118,7 +118,7 @@ export const GameRenderer: React.FC<Props> = ({ config, onBack }) => {
   // ── Playing ────────────────────────────────────────────────────────────────
   if (!currentQuestion) return <div className="engine-error">No question found.</div>
   if (!plugin.validateQuestion(currentQuestion)) return (
-    <div className="engine-error">Question <code>{currentQuestion.id}</code> failed validation for plugin <code>{plugin.id}</code>.</div>
+   <div className="engine-error">Question failed validation for plugin <code>{plugin.id}</code>.</div>
   )
 
   const PluginComponent = plugin.Component as React.ComponentType<{

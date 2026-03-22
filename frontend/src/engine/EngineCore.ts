@@ -127,7 +127,7 @@ export class EngineCore {
 
       // ── REQUEST_HINT ───────────────────────────────────────────────────────
       case "REQUEST_HINT": {
-        const q = state.levelQuestions.find(q => q.id === state.currentQuestionId)
+        //void state.levelQuestions.find(q => q.id === state.currentQuestionId)
         this.emit({ type: "HINT_REQUESTED", payload: { questionId: state.currentQuestionId } })
         return { ...state, stats: { ...state.stats, hintsUsed: state.stats.hintsUsed + 1 } }
       }
