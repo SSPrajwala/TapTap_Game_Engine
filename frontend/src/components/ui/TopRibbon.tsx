@@ -1,5 +1,6 @@
 import React, { useState } from "react"
 import type { AuthUser } from "../../context/AuthContext"
+import logoSrc from "../../assets/logo.png"
 
 interface Props {
   onSearchGame?:  (query: string) => void
@@ -13,27 +14,6 @@ interface Props {
 function initials(name: string): string {
   return name.split(" ").map(w => w[0] ?? "").join("").toUpperCase().slice(0, 2) || "?"
 }
-
-const MiniHexLogo = () => (
-  <svg width="36" height="36" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg"
-    style={{ filter: "drop-shadow(0 0 8px rgba(168,85,247,0.8))", flexShrink: 0 }}>
-    <defs>
-      <linearGradient id="miniHexGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#C0C0D8"/>
-        <stop offset="50%" stopColor="#E8E8FF"/>
-        <stop offset="100%" stopColor="#A0A0C0"/>
-      </linearGradient>
-    </defs>
-    <polygon points="35,4 64,20 64,52 35,68 6,52 6,20" fill="#08061A" stroke="url(#miniHexGrad)" strokeWidth="2.5"/>
-    <path d="M22,24 L16,12 M16,12 L14,9 M16,12 L19,9" stroke="#8B6A40" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
-    <path d="M48,24 L54,12 M54,12 L56,9 M54,12 L51,9" stroke="#8B6A40" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
-    <ellipse cx="35" cy="28" rx="16" ry="14" fill="#C4A070"/>
-    <ellipse cx="35" cy="35" rx="10" ry="8" fill="#D4B090"/>
-    <circle cx="27" cy="25" r="5" fill="#0A0A0A"/><circle cx="43" cy="25" r="5" fill="#0A0A0A"/>
-    <circle cx="28" cy="23" r="2" fill="white"/><circle cx="44" cy="23" r="2" fill="white"/>
-    <text x="35" y="52" textAnchor="middle" fill="url(#miniHexGrad)" fontSize="14" fontFamily="Orbitron" fontWeight="900" letterSpacing="1">TT</text>
-  </svg>
-)
 
 export const TopRibbon: React.FC<Props> = ({
   onSearchGame, onShowDocs, onShowAbout, onShowSignIn, onShowProfile, user,
@@ -82,17 +62,39 @@ export const TopRibbon: React.FC<Props> = ({
       <div style={{ maxWidth: "1100px", margin: "0 auto", height: "60px", display: "flex", alignItems: "center", gap: "16px" }}>
 
         {/* ── Logo ──────────────────────────────────────────────────────────── */}
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
-          <MiniHexLogo />
-          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+          <img
+            src={logoSrc}
+            alt="TapTap Game Engine"
+            style={{
+              width:  "42px",
+              height: "42px",
+              objectFit: "contain",
+              filter: "drop-shadow(0 0 8px rgba(168,85,247,0.7))",
+              flexShrink: 0,
+            }}
+          />
+          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.15 }}>
             <span style={{
-              fontFamily: "Orbitron,monospace", fontSize: "0.9rem", fontWeight: 900,
-              background: "linear-gradient(135deg,#C0C0D8,#E8E8FF,#A855F7)",
-              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
+              fontFamily: "Orbitron, monospace",
+              fontSize:   "0.88rem",
+              fontWeight: 900,
+              background: "linear-gradient(135deg, #C0C0D8 0%, #E8E8FF 40%, #A855F7 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor:  "transparent",
+              backgroundClip: "text",
               letterSpacing: "0.05em",
-            }}>TapTaP</span>
-            <span style={{ fontFamily: "Orbitron,monospace", fontSize: "0.5rem", color: "rgba(168,85,247,0.6)", letterSpacing: "0.2em", textTransform: "uppercase" }}>
-              GAME ENGINE
+            }}>
+              TapTaP
+            </span>
+            <span style={{
+              fontFamily:    "Orbitron, monospace",
+              fontSize:      "0.46rem",
+              color:         "rgba(168,85,247,0.55)",
+              letterSpacing: "0.22em",
+              textTransform: "uppercase",
+            }}>
+              Game Engine
             </span>
           </div>
         </div>

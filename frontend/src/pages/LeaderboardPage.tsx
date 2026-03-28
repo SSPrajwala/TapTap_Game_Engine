@@ -13,6 +13,14 @@ export const LeaderboardPage: React.FC<Props> = ({ onBack }) => {
   const [loading, setLoading]   = useState(true)
   const [source,  setSource]    = useState<Source>("backend")
 
+  // ── Clear-leaderboard admin auth dialog ───────────────────────────────────
+  const [showClearDialog, setShowClearDialog] = useState(false)
+  const [clearName,       setClearName]       = useState("")
+  const [clearCode,       setClearCode]       = useState("")
+  const [clearError,      setClearError]      = useState("")
+  const [clearLoading,    setClearLoading]    = useState(false)
+  const [clearSuccess,    setClearSuccess]    = useState("")
+
   const loadScores = useCallback(async () => {
     setLoading(true)
     try {
@@ -46,6 +54,27 @@ export const LeaderboardPage: React.FC<Props> = ({ onBack }) => {
     setFilter(f)
   }
 
+  const handleClearConfirm = async () => {
+    if (!clearName.trim() || !clearCode.trim()) {
+      setClearError("Both Admin Name and Access Code are required.")
+      return
+    }
+    setClearLoading(true)
+    setClearError("")
+    const result = await LeaderboardService.clearAll(clearName.trim(), clearCode.trim())
+    setClearLoading(false)
+    if (!result.success) {
+      setClearError(result.message)
+      return
+    }
+    setClearSuccess(result.message)
+    setTimeout(() => {
+      setShowClearDialog(false)
+      setClearName(""); setClearCode(""); setClearError(""); setClearSuccess("")
+      void loadScores()
+    }, 1800)
+  }
+
   const formatDate = (ts: number) =>
     new Date(ts).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })
 
@@ -67,10 +96,89 @@ export const LeaderboardPage: React.FC<Props> = ({ onBack }) => {
       <div className="page-header">
         <button className="back-btn" onClick={onBack}>← Back</button>
         <h1 className="page-title">Leaderboard</h1>
-        <button className="btn-danger-sm" onClick={() => { LeaderboardService.clear(); void loadScores() }}>
-          Clear Local
+        <button className="btn-danger-sm" onClick={() => { setClearError(""); setClearSuccess(""); setShowClearDialog(true) }}>
+          🗑 Clear All
         </button>
       </div>
+
+      {/* ── Admin auth dialog for clearing leaderboard ────────────────────── */}
+      {showClearDialog && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9000,
+          background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <div style={{
+            background: "linear-gradient(145deg,rgba(10,10,31,0.97),rgba(20,10,45,0.97))",
+            border:     "1px solid rgba(168,85,247,0.35)",
+            borderRadius: "16px", padding: "30px 28px",
+            width: "min(420px, 90vw)",
+            boxShadow: "0 0 40px rgba(168,85,247,0.25)",
+            fontFamily: "Exo 2, sans-serif",
+          }}>
+            <div style={{ fontSize: "1.5rem", marginBottom: "6px", textAlign: "center" }}>🗑</div>
+            <h3 style={{ textAlign: "center", color: "#fff", margin: "0 0 4px", fontSize: "1.05rem", fontWeight: 700 }}>
+              Clear Entire Leaderboard
+            </h3>
+            <p style={{ textAlign: "center", color: "rgba(255,45,120,0.7)", fontSize: "0.75rem", margin: "0 0 18px" }}>
+              This will permanently delete ALL scores for ALL users. Admin credentials required.
+            </p>
+
+            {clearSuccess ? (
+              <div style={{ textAlign: "center", color: "#22FFAA", fontSize: "0.88rem", padding: "12px", background: "rgba(34,255,170,0.08)", borderRadius: "8px", border: "1px solid rgba(34,255,170,0.2)" }}>
+                ✓ {clearSuccess}
+              </div>
+            ) : (
+              <>
+                <label style={{ display: "block", fontSize: "0.72rem", color: "rgba(232,224,255,0.5)", fontWeight: 600, letterSpacing: "0.05em", marginBottom: "4px" }}>
+                  ADMIN NAME
+                </label>
+                <input
+                  className="admin-input"
+                  placeholder="e.g. Engine Owner"
+                  value={clearName}
+                  style={{ marginBottom: "10px" }}
+                  onChange={e => setClearName(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && void handleClearConfirm()}
+                />
+
+                <label style={{ display: "block", fontSize: "0.72rem", color: "rgba(232,224,255,0.5)", fontWeight: 600, letterSpacing: "0.05em", marginBottom: "4px" }}>
+                  ACCESS CODE
+                </label>
+                <input
+                  className="admin-input"
+                  type="password"
+                  placeholder="Enter access code"
+                  value={clearCode}
+                  style={{ marginBottom: "10px" }}
+                  onChange={e => setClearCode(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && void handleClearConfirm()}
+                />
+
+                {clearError && (
+                  <div style={{ color: "#FF6090", fontSize: "0.78rem", marginBottom: "12px", padding: "8px 10px", background: "rgba(255,45,120,0.07)", borderRadius: "6px", border: "1px solid rgba(255,45,120,0.2)" }}>
+                    ⚠️ {clearError}
+                  </div>
+                )}
+
+                <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
+                  <button
+                    onClick={() => { setShowClearDialog(false); setClearName(""); setClearCode(""); setClearError("") }}
+                    style={{ flex: 1, padding: "9px", background: "rgba(232,224,255,0.05)", border: "1px solid rgba(232,224,255,0.12)", borderRadius: "8px", color: "rgba(232,224,255,0.6)", cursor: "pointer", fontFamily: "Exo 2, sans-serif", fontSize: "0.83rem" }}>
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => void handleClearConfirm()}
+                    disabled={clearLoading}
+                    style={{ flex: 1, padding: "9px", background: clearLoading ? "rgba(255,45,120,0.1)" : "linear-gradient(135deg,#FF2D78,#A855F7)", border: "none", borderRadius: "8px", color: "#fff", cursor: clearLoading ? "not-allowed" : "pointer", fontFamily: "Exo 2, sans-serif", fontWeight: 700, fontSize: "0.83rem" }}>
+                    {clearLoading ? "Verifying…" : "Confirm Clear"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Source indicator */}
       <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react"
+import logoSrc                        from "./assets/logo.png"
 import { AuthProvider, useAuth }      from "./context/AuthContext"
 import { GameRenderer }               from "./components/GameRenderer"
 import { LeaderboardPage }            from "./pages/LeaderboardPage"
@@ -57,25 +58,19 @@ const PLUGIN_TEXT: Record<string, string> = {
   wordbuilder: "#FF2D78",
 }
 
-const HexLogo = () => (
-  <svg width="44" height="44" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg"
-    style={{ filter: "drop-shadow(0 0 10px rgba(168,85,247,0.9))", animation: "logoPulse 3s ease-in-out infinite" }}>
-    <defs>
-      <linearGradient id="navHexGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#C0C0D8"/>
-        <stop offset="50%" stopColor="#E8E8FF"/>
-        <stop offset="100%" stopColor="#A0A0C0"/>
-      </linearGradient>
-    </defs>
-    <polygon points="35,3 63,19 63,51 35,67 7,51 7,19" fill="#08061A" stroke="url(#navHexGrad)" strokeWidth="2.5"/>
-    <path d="M22,23 L16,11 M16,11 L14,8 M16,11 L19,8" stroke="#8B6A40" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
-    <path d="M48,23 L54,11 M54,11 L56,8 M54,11 L51,8" stroke="#8B6A40" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
-    <ellipse cx="35" cy="27" rx="15" ry="13" fill="#C4A070"/>
-    <ellipse cx="35" cy="34" rx="9"  ry="7"  fill="#D4B090"/>
-    <circle cx="27" cy="24" r="4.5" fill="#0A0A0A"/><circle cx="43" cy="24" r="4.5" fill="#0A0A0A"/>
-    <circle cx="28" cy="22" r="1.8" fill="white"/><circle cx="44" cy="22" r="1.8" fill="white"/>
-    <text x="35" y="51" textAnchor="middle" fill="url(#navHexGrad)" fontSize="13" fontFamily="Orbitron" fontWeight="900" letterSpacing="1">TT</text>
-  </svg>
+// Logo image used in header — actual logo.png asset
+const AppLogoImg = () => (
+  <img
+    src={logoSrc}
+    alt="TapTap Game Engine"
+    style={{
+      width:     "64px",
+      height:    "64px",
+      objectFit: "contain",
+      animation: "logoPulse 3s ease-in-out infinite",
+      filter:    "drop-shadow(0 0 12px rgba(168,85,247,0.8))",
+    }}
+  />
 )
 
 // ── Inner app ─────────────────────────────────────────────────────────────────
@@ -233,10 +228,25 @@ function AppInner() {
       <div className="app-shell" style={{ flex: 1, paddingTop: "24px" }}>
         <header className="app-header animate-in" style={{ marginBottom: "28px" }}>
           <div className="app-logo-mark">
-            <HexLogo />
-            <h1 style={{ fontFamily: "Orbitron, monospace" }}>TapTap Engine</h1>
+            <AppLogoImg />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "2px" }}>
+              <h1 style={{ fontFamily: "Orbitron, monospace", margin: 0 }}>
+                Tap Tap{" "}
+                <span style={{
+                  background: "linear-gradient(135deg, #A855F7 0%, #00D4FF 60%, #22FFAA 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                }}>
+                  GAME ENGINE
+                </span>
+              </h1>
+              <p style={{ margin: 0, fontStyle: "italic", letterSpacing: "0.18em", color: "rgba(232,224,255,0.55)", fontSize: "0.75rem" }}>
+                "One engine · many games"
+              </p>
+            </div>
           </div>
-          <p>Adaptive · Plugin-based · JSON-driven · 6 Game Types</p>
+          <p style={{ marginTop: "10px" }}>Adaptive · Plugin-based · JSON-driven · 6 Game Types</p>
         </header>
 
         <nav className="app-nav animate-in stagger-1">

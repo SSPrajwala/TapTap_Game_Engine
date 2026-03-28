@@ -7,6 +7,14 @@
       "passwordHash": "$2a$10$2Imwv3VcKapnp9KkI/rZwu05BIOPWyw1T0anDL7w7rYRWMin63Q8S",
       "college": "KITSW",
       "createdAt": 1774637806601
+    },
+    {
+      "id": "b85a3853-754d-45ac-8a47-66e2cbe582d8",
+      "name": "Siri",
+      "email": "siri@gmail.com",
+      "passwordHash": "$2a$10$E.YlFLF8eLkNjYnhkTimvOtQjW489SyMeBCAd13OnSoI/oMYAlCXW",
+      "college": "AIIMS",
+      "createdAt": 1774673675008
     }
   ],
   "scores": [],
@@ -16,6 +24,13 @@
       "name": "Engine Owner",
       "accessCode": "TAPTAP-ADMIN-2024",
       "createdAt": 1700000000000
-    }
+    },
+    {
+  "id": "admin_002",
+  "name": "Suguna",
+  "accessCode": "SUGUNA-ADMIN-2026",
+  "createdAt": 1700000001000
+}
+
   ]
 }

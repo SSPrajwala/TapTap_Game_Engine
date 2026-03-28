@@ -89,6 +89,12 @@ function getAllScores()            { return read().scores }
 function getScoresForGame(gameId)  { return getAllScores().filter(s => s.gameId === gameId).slice(0, 10) }
 function getGlobalTop(limit = 50)  { return getAllScores().slice(0, limit) }
 
+function clearScores() {
+  const db = read()
+  db.scores = []
+  write(db)
+}
+
 function getRank(score, timeTaken) {
   return getAllScores().filter(s =>
     s.score > score || (s.score === score && s.timeTaken < timeTaken)
@@ -145,7 +151,7 @@ module.exports = {
   // users
   findUserByEmail, findUserById, createUser,
   // scores
-  saveScore, getAllScores, getScoresForGame, getGlobalTop, getRank,
+  saveScore, getAllScores, getScoresForGame, getGlobalTop, getRank, clearScores,
   // admins
   findAdminByNameAndCode, findAdminById, getAdmins,
   // games

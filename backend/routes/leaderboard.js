@@ -82,4 +82,20 @@ router.post("/submit", optionalAuth, (req, res) => {
   res.status(201).json({ success: true, entry, rank })
 })
 
+// ── DELETE /api/leaderboard/clear  (admin-only: clears ALL scores globally) ──
+router.delete("/clear", (req, res) => {
+  const { adminName, accessCode } = req.body ?? {}
+
+  if (!adminName || !accessCode)
+    return res.status(400).json({ error: "adminName and accessCode are required." })
+
+  const admin = db.findAdminByNameAndCode(adminName, accessCode)
+  if (!admin)
+    return res.status(403).json({ error: "Admin name or access code is incorrect." })
+
+  db.clearScores()
+  console.log(`[Leaderboard] ALL scores cleared by admin: ${admin.name}`)
+  res.json({ success: true, message: `All scores cleared by ${admin.name}.`, clearedBy: admin.name })
+})
+
 module.exports = router

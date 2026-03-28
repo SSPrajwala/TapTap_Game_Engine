@@ -52,6 +52,27 @@ export class LeaderboardService {
     localStorage.removeItem(KEY)
   }
 
+  // ── Admin clear — wipes backend DB scores + local cache ───────────────────
+  static async clearAll(
+    adminName: string,
+    accessCode: string,
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const res = await fetch(`${API_URL}/clear`, {
+        method:  "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ adminName, accessCode }),
+        signal:  AbortSignal.timeout(6000),
+      })
+      const data: { error?: string; message?: string } = await res.json()
+      if (!res.ok) return { success: false, message: data.error ?? "Server error." }
+      localStorage.removeItem(KEY)   // also wipe local cache
+      return { success: true, message: data.message ?? "All scores cleared." }
+    } catch {
+      return { success: false, message: "Could not reach backend. Try again." }
+    }
+  }
+
   // ── Real backend submit ────────────────────────────────────────────────────
   // Posts score to the TapTap backend (localhost:3001).
   // Falls back gracefully if the backend is not running.

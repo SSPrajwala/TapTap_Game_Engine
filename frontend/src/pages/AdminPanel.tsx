@@ -135,15 +135,13 @@ export const AdminPanel: React.FC<Props> = ({ games, onBack, onSave, adminToken,
     setLocalGames(prev => prev.map(g => g.id === updated.id ? updated : g))
 
   // ── Save to backend (writes to JSON file) ─────────────────────────────────
-  const handleSaveAll = async () => {
-    if (!game) return
-    setSaveStatus("saving")
-    setSaveMsg("Writing to game JSON file…")
+  const saveGameToBackend = async (targetGame: GameConfig, silent = false) => {
+    if (!silent) { setSaveStatus("saving"); setSaveMsg("Writing to game JSON file…") }
     try {
-      const res = await fetch(`${ADMIN_API}/games/${encodeURIComponent(selectedGameId)}`, {
+      const res = await fetch(`${ADMIN_API}/games/${encodeURIComponent(targetGame.id)}`, {
         method:  "PUT",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}` },
-        body:    JSON.stringify(game),
+        body:    JSON.stringify(targetGame),
       })
       if (!res.ok) {
         const data = await res.json()
@@ -152,14 +150,18 @@ export const AdminPanel: React.FC<Props> = ({ games, onBack, onSave, adminToken,
       const data = await res.json()
       onSave(localGames)
       setSaveStatus("saved")
-      setSaveMsg(`✓ Saved by ${data.savedBy} — ${data.questionCount} questions written to JSON file.`)
+      setSaveMsg(silent
+        ? `✓ Auto-saved — ${data.questionCount} questions in JSON file.`
+        : `✓ Saved by ${data.savedBy} — ${data.questionCount} questions written to JSON file.`)
     } catch (err) {
       setSaveStatus("error")
       setSaveMsg(`⚠️ ${err instanceof Error ? err.message : "Save failed"}. Changes kept in memory.`)
       onSave(localGames)
     }
-    setTimeout(() => { setSaveStatus("idle"); setSaveMsg("") }, 4000)
+    setTimeout(() => { setSaveStatus("idle"); setSaveMsg("") }, 3500)
   }
+
+  const handleSaveAll = () => void saveGameToBackend(game!, false)
 
   // ── Question save (all types) ─────────────────────────────────────────────
   const handleSaveQ = () => {
@@ -224,20 +226,21 @@ export const AdminPanel: React.FC<Props> = ({ games, onBack, onSave, adminToken,
 
     setQError("")
     let updatedQs: Question[]
+    let updatedLevels = game.levels
     if (editingQId) {
       updatedQs = game.questions.map(existing => existing.id === editingQId ? q : existing)
     } else {
       updatedQs = [...game.questions, q]
       const firstLevel = game.levels[0]
       if (firstLevel && !firstLevel.questionIds.includes(q.id)) {
-        const updatedLevels = game.levels.map((l, i) =>
+        updatedLevels = game.levels.map((l, i) =>
           i === 0 ? { ...l, questionIds: [...l.questionIds, q.id] } : l
         )
-        updateGame({ ...game, questions: updatedQs, levels: updatedLevels })
-        resetForm(); return
       }
     }
-    updateGame({ ...game, questions: updatedQs })
+    const updatedGame = { ...game, questions: updatedQs, levels: updatedLevels }
+    updateGame(updatedGame)
+    void saveGameToBackend(updatedGame, true)   // ← auto-save immediately to JSON
     resetForm()
   }
 
@@ -260,11 +263,13 @@ export const AdminPanel: React.FC<Props> = ({ games, onBack, onSave, adminToken,
 
   const handleDeleteQ = (id: string) => {
     if (!game) return
-    updateGame({
+    const updated: GameConfig = {
       ...game,
       questions: game.questions.filter(q => q.id !== id),
-      levels: game.levels.map(l => ({ ...l, questionIds: l.questionIds.filter(qid => qid !== id) }))
-    })
+      levels:    game.levels.map(l => ({ ...l, questionIds: l.questionIds.filter(qid => qid !== id) })),
+    }
+    updateGame(updated)
+    void saveGameToBackend(updated, true)   // ← persist deletion to JSON immediately
   }
 
   // ── Save button style ─────────────────────────────────────────────────────
@@ -321,14 +326,15 @@ export const AdminPanel: React.FC<Props> = ({ games, onBack, onSave, adminToken,
         </div>
       )}
 
-      {/* Warning */}
+      {/* Info banner */}
       {saveStatus === "idle" && (
         <div style={{
           padding: "8px 14px", borderRadius: "8px",
           fontFamily: "Exo 2, sans-serif", fontSize: "0.75rem", marginBottom: "10px",
-          background: "rgba(255,215,0,0.06)", border: "1px solid rgba(255,215,0,0.15)", color: "rgba(255,215,0,0.6)",
+          background: "rgba(34,255,170,0.04)", border: "1px solid rgba(34,255,170,0.12)", color: "rgba(34,255,170,0.55)",
         }}>
-          ⚠️ Changes only persist after clicking <strong>"💾 Save to JSON"</strong> — this writes directly to the game's JSON source file.
+          ✓ Adding, editing, or deleting questions <strong>auto-saves</strong> to the game JSON file instantly.
+          Use <strong>"💾 Save to JSON"</strong> for Settings / Level changes.
         </div>
       )}
 
@@ -400,6 +406,7 @@ export const AdminPanel: React.FC<Props> = ({ games, onBack, onSave, adminToken,
                     <div>
                       <Label required>Time (sec)</Label>
                       <input className="admin-input" type="number" min={5}
+                        style={{ minWidth: "90px", width: "100%" }}
                         value={game.plugin === "quiz" ? quizForm.timeLimit : game.plugin === "flashcard" ? flashForm.timeLimit : wbForm.timeLimit}
                         onChange={e => {
                           const v = +e.target.value

@@ -272,20 +272,20 @@ body::after {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: 16px;
+  margin-bottom: 4px;
 }
 
 .app-logo-hex {
-  width: 48px;
-  height: 48px;
-  filter: drop-shadow(0 0 12px rgba(168,85,247,0.8));
+  width: 64px;
+  height: 64px;
+  filter: drop-shadow(0 0 14px rgba(168,85,247,0.85));
   animation: logoPulse 3s ease-in-out infinite;
 }
 
 @keyframes logoPulse {
   0%,100% { filter: drop-shadow(0 0 12px rgba(168,85,247,0.8)); }
-  50%     { filter: drop-shadow(0 0 24px rgba(0,212,255,0.9)); }
+  50%     { filter: drop-shadow(0 0 28px rgba(0,212,255,0.95)) drop-shadow(0 0 14px rgba(168,85,247,0.5)); }
 }
 
 .app-header h1 {
@@ -298,6 +298,7 @@ body::after {
   background-clip: text;
   letter-spacing: 0.05em;
   margin: 0;
+  line-height: 1.1;
 }
 
 .app-header p {
