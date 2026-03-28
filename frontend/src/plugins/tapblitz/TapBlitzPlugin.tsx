@@ -24,6 +24,23 @@ import type {
   Question,
   AnswerResult,
 } from "../../types/engine.types"
+import { HowToPlayModal, HelpButton } from "../../components/ui/HowToPlayModal"
+
+const TB_HOW_TO_STEPS = [
+  { icon: "🎯", title: "Click Targets",   desc: "Coloured circles appear on the canvas and slowly drift around. Click or tap them before they disappear to score points." },
+  { icon: "⏳", title: "Timer Ring",       desc: "Each target has a shrinking white ring around it showing how long you have left. When the ring vanishes, the target is gone!" },
+  { icon: "🎨", title: "Target Colours",  desc: "Purple = 100 pts · Cyan = 150 pts · Green = 200 pts · Red = 300 pts · ⭐ Gold = 500 pts. Smaller targets are rarer and worth more." },
+  { icon: "🔥", title: "Combo Streak",    desc: "Hit targets consecutively without missing to build a combo. At 20 hits you reach 2× multiplier — everything you click scores double!" },
+  { icon: "💀", title: "Miss Limit",      desc: "Each wave has a limited number of misses allowed. Letting too many targets expire ends the wave early. Stay sharp!" },
+  { icon: "⚡", title: "Score More",      desc: "Hit as many targets as possible within the wave duration. The wave ends automatically when time runs out." },
+]
+
+const TB_TIPS = [
+  "Prioritise gold and red targets — they're rare and give the most points.",
+  "Don't try to click every target — focus on accuracy to maintain your combo multiplier.",
+  "Move your cursor to the centre of the canvas so you're always within reach of spawning targets.",
+  "Smaller targets are worth more points per hit — aim for them when your combo is high.",
+]
 
 // ── Internal target object ────────────────────────────────────────────────────
 
@@ -135,6 +152,7 @@ const TapBlitzComponent: React.FC<PluginRenderProps<TapBlitzQuestion>> = ({
   const [waveEnded,   setWaveEnded]   = useState(false)
   const [countDown,   setCountDown]   = useState(3)
   const [gameStarted, setGameStarted] = useState(false)
+  const [showHelp,    setShowHelp]    = useState(false)
 
   // ── Countdown before wave ─────────────────────────────────────────────────
   useEffect(() => {
@@ -483,19 +501,38 @@ const TapBlitzComponent: React.FC<PluginRenderProps<TapBlitzQuestion>> = ({
 
   if (!gameStarted) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        minHeight: "360px", gap: "20px" }}>
-        <h2 style={{ fontFamily: "Orbitron, monospace", color: "#00D4FF", fontSize: "1.2rem", margin: 0 }}>
-          {question.instruction}
-        </h2>
-        <div style={{ fontSize: "6rem", fontFamily: "Orbitron, monospace", color: "#A855F7",
-          textShadow: "0 0 40px rgba(168,85,247,0.8)", animation: "pulse 0.5s ease-in-out" }}>
-          {countDown > 0 ? countDown : "GO!"}
+      <>
+        <HowToPlayModal
+          open={showHelp}
+          onClose={() => setShowHelp(false)}
+          title="TapBlitz"
+          emoji="🎯"
+          steps={TB_HOW_TO_STEPS}
+          tips={TB_TIPS}
+          accentColor="#A855F7"
+        />
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          minHeight: "360px", gap: "20px" }}>
+          <h2 style={{ fontFamily: "Orbitron, monospace", color: "#00D4FF", fontSize: "1.2rem", margin: 0, textAlign: "center" }}>
+            {question.instruction}
+          </h2>
+          <div style={{ fontSize: "6rem", fontFamily: "Orbitron, monospace", color: "#A855F7",
+            textShadow: "0 0 40px rgba(168,85,247,0.8)", animation: "pulse 0.5s ease-in-out" }}>
+            {countDown > 0 ? countDown : "GO!"}
+          </div>
+          <div style={{ textAlign: "center", fontSize: "0.86rem", color: "rgba(232,224,255,0.65)",
+            background: "rgba(168,85,247,0.07)", border: "1px solid rgba(168,85,247,0.2)",
+            borderRadius: "10px", padding: "10px 20px", lineHeight: 1.7 }}>
+            🖱️ Click targets before their timer ring shrinks · 🔥 Build combos · ⭐ Gold = 500 pts
+          </div>
+          <button onClick={() => setShowHelp(true)} style={{
+            background: "transparent", border: "1px solid rgba(168,85,247,0.4)",
+            borderRadius: "8px", color: "#A855F7", cursor: "pointer",
+            fontFamily: "Orbitron, monospace", fontSize: "0.78rem", padding: "8px 18px" }}>
+            📖 How to Play
+          </button>
         </div>
-        <p style={{ fontSize: "0.8rem", color: "rgba(232,224,255,0.4)" }}>
-          Click targets · Combos multiply score · Gold targets = bonus
-        </p>
-      </div>
+      </>
     )
   }
 
@@ -504,6 +541,16 @@ const TapBlitzComponent: React.FC<PluginRenderProps<TapBlitzQuestion>> = ({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+      <HowToPlayModal
+        open={showHelp}
+        onClose={() => setShowHelp(false)}
+        title="TapBlitz"
+        emoji="🎯"
+        steps={TB_HOW_TO_STEPS}
+        tips={TB_TIPS}
+        accentColor="#A855F7"
+      />
+      <HelpButton onClick={() => setShowHelp(true)} color="#A855F7" />
 
       {/* HUD */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",

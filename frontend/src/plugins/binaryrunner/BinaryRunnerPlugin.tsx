@@ -18,6 +18,24 @@ import type {
   Question,
   AnswerResult,
 } from "../../types/engine.types"
+import { HowToPlayModal, HelpButton } from "../../components/ui/HowToPlayModal"
+
+const BR_HOW_TO_STEPS = [
+  { icon: "🎮", title: "Your Goal",     desc: "You are a Data Packet racing through a CPU. Logic-gate obstacles appear — switch to the lane whose answer is correct before the obstacle reaches you." },
+  { icon: "⬅️", title: "Lane 0 (Left)", desc: "Press A or ← arrow key, OR click the LEFT half of the screen to move to Lane 0." },
+  { icon: "➡️", title: "Lane 1 (Right)", desc: "Press D or → arrow key, OR click the RIGHT half of the screen to move to Lane 1." },
+  { icon: "🧩", title: "Logic Gates",   desc: "Each obstacle shows a binary expression like  '1 AND 0 = ?'. The correct answer (0 or 1) is the lane you need to be in. AND, OR, XOR, NAND, NOR are used." },
+  { icon: "💡", title: "Reveal Hint",   desc: "When an obstacle gets close (about halfway), the correct lane glows CYAN/GREEN. Use this to double-check before impact!" },
+  { icon: "❤️", title: "Lives",         desc: "You have 3 lives. Each wrong-lane hit costs one life. Lose all 3 and the run ends early." },
+  { icon: "🔥", title: "Combo Bonus",   desc: "3+ consecutive correct answers builds a combo multiplier. Higher combo = more points per hit." },
+]
+
+const BR_TIPS = [
+  "Watch the HUD — the upcoming question is displayed in bright cyan above the canvas.",
+  "Move early! Switch lanes as soon as you read the question, not at the last second.",
+  "AND: output is 1 only if BOTH inputs are 1.  OR: 1 if at least one input is 1.  XOR: 1 if inputs differ.",
+  "NAND and NOR are just the opposite of AND and OR respectively.",
+]
 
 // ── Internal types ────────────────────────────────────────────────────────────
 
@@ -152,6 +170,7 @@ const BinaryRunnerComponent: React.FC<PluginRenderProps<BinaryRunnerQuestion>> =
   const [countDown, setCountDown] = useState(3)
   const [started,   setStarted]   = useState(false)
   const [wrongFlash, setWrongFlash] = useState(false)
+  const [showHelp,   setShowHelp]   = useState(false)
 
   // ── Keyboard handling ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -343,8 +362,8 @@ const BinaryRunnerComponent: React.FC<PluginRenderProps<BinaryRunnerQuestion>> =
         ctx.beginPath(); ctx.arc(sx, sy, 0.8, 0, Math.PI * 2); ctx.fill()
       }
 
-      // Perspective grid lines (floor)
-      ctx.strokeStyle = "rgba(168,85,247,0.18)"
+      // Perspective grid lines (floor) — neon cyan tint
+      ctx.strokeStyle = "rgba(0,212,255,0.22)"
       ctx.lineWidth   = 1
       for (let gz = 0; gz <= FAR_Z; gz += 20) {
         const animatedZ = (gz - (g.distance * 100) % 20 + 20) % FAR_Z
@@ -352,7 +371,8 @@ const BinaryRunnerComponent: React.FC<PluginRenderProps<BinaryRunnerQuestion>> =
         if (gy < HORIZON_Y) continue
         ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke()
       }
-      // Vanishing lines
+      // Vanishing lines — purple tint
+      ctx.strokeStyle = "rgba(168,85,247,0.28)"
       for (let lx = 0; lx <= W; lx += W / 8) {
         ctx.beginPath()
         ctx.moveTo(lx, FLOOR_Y)
@@ -360,72 +380,86 @@ const BinaryRunnerComponent: React.FC<PluginRenderProps<BinaryRunnerQuestion>> =
         ctx.stroke()
       }
 
-      // Road centre divider
-      ctx.setLineDash([8, 12])
-      ctx.strokeStyle = "rgba(168,85,247,0.35)"
-      ctx.lineWidth   = 2
+      // Road centre divider — bright magenta dash
+      ctx.setLineDash([10, 14])
+      ctx.strokeStyle = "rgba(255,45,180,0.55)"
+      ctx.lineWidth   = 2.5
+      ctx.shadowColor = "rgba(255,45,180,0.4)"
+      ctx.shadowBlur  = 6
       ctx.beginPath()
       ctx.moveTo(W / 2, FLOOR_Y)
       ctx.lineTo(W / 2, HORIZON_Y)
       ctx.stroke()
       ctx.setLineDash([])
+      ctx.shadowBlur  = 0
 
       // Lane labels at bottom
-      const laneLabels = ["◀  0", "1  ▶"]
-      const laneColors = ["#00D4FF", "#A855F7"]
+      const laneLabels = ["◀  LANE 0", "LANE 1  ▶"]
+      const laneColors = ["#00D4FF", "#FF2D78"]
       laneLabels.forEach((lbl, li) => {
         const bx = LANE_X_NEAR[li]
-        ctx.font      = "bold 14px Orbitron, monospace"
-        ctx.fillStyle = laneColors[li]
-        ctx.textAlign = "center"
-        ctx.fillText(lbl, bx, FLOOR_Y - 8)
+        ctx.font        = "bold 20px Orbitron, monospace"
+        ctx.fillStyle   = laneColors[li]
+        ctx.textAlign   = "center"
+        ctx.shadowColor = laneColors[li]
+        ctx.shadowBlur  = 12
+        ctx.fillText(lbl, bx, FLOOR_Y - 10)
+        ctx.shadowBlur  = 0
       })
 
       // ── Challenges (obstacles) ───────────────────────────────────────────────
       for (const c of [...g.challenges].sort((a, b) => b.z - a.z)) {
         const scale  = perspScale(c.z)
-        const boxW   = 110 * scale
-        const boxH   = 62  * scale
+        const boxW   = 160 * scale
+        const boxH   = 100 * scale
         const ansX   = perspX(c.answer, c.z)
         const wrongX = perspX(c.answer === 0 ? 1 : 0, c.z)
         const cy     = perspY(c.z) - boxH / 2
 
         // Show correct/wrong lane colour only when close
-        const reveal = c.z < FAR_Z * 0.45
+        const reveal = c.z < FAR_Z * 0.55
 
-        // Wrong lane block (neutral/red)
-        drawBlock(ctx, wrongX, cy, boxW, boxH, c.answered && !c.correct
-          ? "#FF2D78" : "#1A0A2E",
-          c.answered && !c.correct ? "#FF2D78" : "rgba(168,85,247,0.4)",
-          scale, "")
+        // Wrong lane block — dark red fill, vivid red border
+        drawBlock(ctx, wrongX, cy, boxW, boxH,
+          c.answered && !c.correct ? "rgba(255,45,120,0.55)" : "rgba(60,10,30,0.85)",
+          c.answered && !c.correct ? "#FF2D78" : "#CC2255",
+          scale, c.answered && !c.correct ? "✗" : "")
 
-        // Correct lane block
+        // Correct lane block — cyan glow when revealed
         drawBlock(ctx, ansX, cy, boxW, boxH,
-          reveal ? hexToRgba("#22FFAA", 0.18) : "rgba(168,85,247,0.1)",
-          reveal ? "#22FFAA" : "rgba(168,85,247,0.5)",
+          reveal
+            ? (c.answered && c.correct ? "rgba(34,255,170,0.45)" : "rgba(34,255,170,0.15)")
+            : "rgba(30,15,60,0.85)",
+          reveal ? "#22FFAA" : "#5544AA",
           scale,
           c.answered && c.correct ? "✓" : "")
 
-        // Challenge text — appears on both blocks, prominently
-        const fontSize = Math.max(9, 13 * scale)
+        // Challenge question text — big, bright, centred above blocks
+        const fontSize = Math.max(14, 24 * scale)
         ctx.font        = `bold ${fontSize}px Orbitron, monospace`
         ctx.textAlign   = "center"
-        ctx.fillStyle   = c.answered ? (c.correct ? "#22FFAA" : "#FF2D78") : "#E8E0FF"
-        ctx.shadowColor = c.answered ? (c.correct ? "#22FFAA" : "#FF2D78") : "#A855F7"
-        ctx.shadowBlur  = 8 * scale
+        ctx.fillStyle   = c.answered
+          ? (c.correct ? "#22FFAA" : "#FF2D78")
+          : "#FFFFFF"
+        ctx.shadowColor = c.answered
+          ? (c.correct ? "#22FFAA" : "#FF2D78")
+          : "#00D4FF"
+        ctx.shadowBlur  = Math.max(10, 18 * scale)
 
-        // Position the label above both blocks
         const midX = (ansX + wrongX) / 2
-        ctx.fillText(c.label, midX, cy - 6 * scale)
+        ctx.fillText(c.label, midX, cy - 10 * scale)
         ctx.shadowBlur = 0
 
-        // Lane answer labels on each block
-        const smallFont = Math.max(8, 11 * scale)
-        ctx.font        = `bold ${smallFont}px Orbitron, monospace`
-        ctx.fillStyle   = reveal ? "#22FFAA" : "rgba(232,224,255,0.4)"
-        ctx.fillText(`${c.answer}`, ansX, cy + boxH / 2 - 2)
-        ctx.fillStyle = "rgba(232,224,255,0.25)"
-        ctx.fillText(`${c.answer === 0 ? 1 : 0}`, wrongX, cy + boxH / 2 - 2)
+        // Lane answer labels (0 / 1) on each block
+        const smallFont = Math.max(11, 18 * scale)
+        ctx.font      = `bold ${smallFont}px Orbitron, monospace`
+        ctx.shadowColor = reveal ? "#22FFAA" : "transparent"
+        ctx.shadowBlur  = reveal ? 8 * scale : 0
+        ctx.fillStyle   = reveal ? "#22FFAA" : "rgba(232,224,255,0.55)"
+        ctx.fillText(`${c.answer}`, ansX, cy + boxH / 2 - 4 * scale)
+        ctx.shadowBlur  = 0
+        ctx.fillStyle   = "rgba(232,224,255,0.35)"
+        ctx.fillText(`${c.answer === 0 ? 1 : 0}`, wrongX, cy + boxH / 2 - 4 * scale)
       }
 
       // ── Player (Data Packet) ────────────────────────────────────────────────
@@ -550,20 +584,40 @@ const BinaryRunnerComponent: React.FC<PluginRenderProps<BinaryRunnerQuestion>> =
 
   if (!started) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center",
-        justifyContent: "center", minHeight: "360px", gap: "20px" }}>
-        <h2 style={{ fontFamily: "Orbitron, monospace", color: "#00D4FF", fontSize: "1.15rem", margin: 0 }}>
-          {question.instruction}
-        </h2>
-        <div style={{ fontSize: "6rem", fontFamily: "Orbitron, monospace", color: "#A855F7",
-          textShadow: "0 0 40px rgba(168,85,247,0.8)" }}>
-          {countDown > 0 ? countDown : "RUN!"}
+      <>
+        <HowToPlayModal
+          open={showHelp}
+          onClose={() => setShowHelp(false)}
+          title="Binary Runner"
+          emoji="🚀"
+          steps={BR_HOW_TO_STEPS}
+          tips={BR_TIPS}
+          accentColor="#00D4FF"
+        />
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center",
+          justifyContent: "center", minHeight: "360px", gap: "20px" }}>
+          <h2 style={{ fontFamily: "Orbitron, monospace", color: "#00D4FF", fontSize: "1.15rem",
+            margin: 0, textAlign: "center", textShadow: "0 0 20px rgba(0,212,255,0.7)" }}>
+            {question.instruction}
+          </h2>
+          <div style={{ fontSize: "6rem", fontFamily: "Orbitron, monospace", color: "#A855F7",
+            textShadow: "0 0 40px rgba(168,85,247,0.8)" }}>
+            {countDown > 0 ? countDown : "RUN!"}
+          </div>
+          <div style={{ textAlign: "center", fontSize: "0.86rem", color: "rgba(232,224,255,0.6)",
+            background: "rgba(0,212,255,0.06)", border: "1px solid rgba(0,212,255,0.2)",
+            borderRadius: "10px", padding: "12px 20px", lineHeight: 1.7 }}>
+            ◀ <strong style={{ color: "#00D4FF" }}>A / ← key</strong>  or  click left half  →  Lane 0<br/>
+            ▶ <strong style={{ color: "#FF2D78" }}>D / → key</strong>  or  click right half  →  Lane 1
+          </div>
+          <button onClick={() => setShowHelp(true)} style={{
+            background: "transparent", border: "1px solid rgba(0,212,255,0.4)",
+            borderRadius: "8px", color: "#00D4FF", cursor: "pointer",
+            fontFamily: "Orbitron, monospace", fontSize: "0.78rem", padding: "8px 18px" }}>
+            📖 How to Play
+          </button>
         </div>
-        <p style={{ fontSize: "0.8rem", color: "rgba(232,224,255,0.4)", textAlign: "center" }}>
-          ◀ A / ← key  or  click left half  →  Lane 0<br/>
-          ▶ D / → key  or  click right half  →  Lane 1
-        </p>
-      </div>
+      </>
     )
   }
 
@@ -571,20 +625,37 @@ const BinaryRunnerComponent: React.FC<PluginRenderProps<BinaryRunnerQuestion>> =
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+      <HowToPlayModal
+        open={showHelp}
+        onClose={() => setShowHelp(false)}
+        title="Binary Runner"
+        emoji="🚀"
+        steps={BR_HOW_TO_STEPS}
+        tips={BR_TIPS}
+        accentColor="#00D4FF"
+      />
+      <HelpButton onClick={() => setShowHelp(true)} color="#00D4FF" />
 
       {/* HUD */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
-        padding: "8px 16px", background: "rgba(4,2,18,0.8)",
-        border: "1px solid rgba(168,85,247,0.2)", borderRadius: "10px",
-        fontFamily: "Orbitron, monospace", fontSize: "0.82rem" }}>
-        <span style={{ color: "#A855F7" }}>⚡ {score}</span>
-        <span style={{ color: "#22FFAA" }}>
-          {curLabel ? `❓ ${curLabel}` : "Watch the road…"}
+        padding: "10px 18px", background: "rgba(4,2,18,0.92)",
+        border: "1px solid rgba(168,85,247,0.35)", borderRadius: "12px",
+        fontFamily: "Orbitron, monospace", fontSize: "0.88rem" }}>
+        <span style={{ color: "#A855F7", fontWeight: 700 }}>⚡ {score}</span>
+        <span style={{
+          color: "#00FFFF",
+          fontWeight: 900,
+          fontSize: "1.05rem",
+          textShadow: "0 0 14px rgba(0,212,255,0.9)",
+          letterSpacing: "0.04em",
+        }}>
+          {curLabel ? `❓  ${curLabel}` : "👁 Watch the road…"}
         </span>
         <div style={{ display: "flex", gap: "14px", alignItems: "center" }}>
-          {combo >= 3 && <span style={{ color: "#FFD700" }}>🔥 ×{combo}</span>}
+          {combo >= 3 && <span style={{ color: "#FFD700", fontWeight: 700 }}>🔥 ×{combo}</span>}
           <span>{"❤️".repeat(lives)}{"🖤".repeat(Math.max(0, 3 - lives))}</span>
-          <span style={{ color: timeRatio < 0.2 ? "#FF2D78" : "#00D4FF" }}>⏱ {timeLeft}s</span>
+          <span style={{ color: timeRatio < 0.2 ? "#FF2D78" : "#00D4FF",
+            fontWeight: timeRatio < 0.2 ? 900 : 600 }}>⏱ {timeLeft}s</span>
         </div>
       </div>
 
@@ -647,19 +718,23 @@ function drawBlock(
   const x = cx - bw / 2
   ctx.save()
   ctx.shadowColor = stroke
-  ctx.shadowBlur  = 10 * scale
-  roundRect(ctx, x, cy, bw, bh, 6 * scale)
+  ctx.shadowBlur  = Math.max(16, 22 * scale)
+  roundRect(ctx, x, cy, bw, bh, 7 * scale)
   ctx.fillStyle   = fill
   ctx.fill()
   ctx.strokeStyle = stroke
-  ctx.lineWidth   = 2 * scale
+  ctx.lineWidth   = Math.max(2, 3 * scale)
   ctx.stroke()
   ctx.shadowBlur  = 0
   if (label) {
-    ctx.font        = `bold ${14 * scale}px Orbitron, monospace`
-    ctx.fillStyle   = "#22FFAA"
+    const labelSize = Math.max(14, 20 * scale)
+    ctx.font        = `bold ${labelSize}px Orbitron, monospace`
+    ctx.fillStyle   = label === "✗" ? "#FF2D78" : "#22FFAA"
+    ctx.shadowColor = label === "✗" ? "#FF2D78" : "#22FFAA"
+    ctx.shadowBlur  = 12 * scale
     ctx.textAlign   = "center"
     ctx.fillText(label, cx, cy + bh / 2 - 4 * scale)
+    ctx.shadowBlur  = 0
   }
   ctx.restore()
 }

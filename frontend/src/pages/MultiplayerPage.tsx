@@ -279,14 +279,19 @@ const LobbyRoom: React.FC<{
                   const g = games.find(g => g.id === e.target.value)
                   if (g) onSelectGame(g.id, g.title, g.questions.length)
                 }}
-                style={{ width: "100%", background: "rgba(168,85,247,0.08)",
-                  border: "1px solid rgba(168,85,247,0.3)", borderRadius: "8px",
+                style={{ width: "100%", background: "#0D0B1E",
+                  border: "1px solid rgba(168,85,247,0.45)", borderRadius: "8px",
                   color: "#E8E0FF", fontFamily: "Exo 2, sans-serif",
-                  fontSize: "0.84rem", padding: "9px 12px" }}
+                  fontSize: "0.84rem", padding: "9px 12px",
+                  WebkitAppearance: "none", appearance: "none",
+                  cursor: "pointer" }}
               >
-                <option value="">— pick a game —</option>
+                <option value="" style={{ background: "#0D0B1E", color: "rgba(232,224,255,0.5)" }}>
+                  — pick a game —
+                </option>
                 {games.map(g => (
-                  <option key={g.id} value={g.id}>
+                  <option key={g.id} value={g.id}
+                    style={{ background: "#0D0B1E", color: "#E8E0FF", padding: "6px" }}>
                     {g.ui?.emoji ?? "🎮"} {g.title} ({g.plugin})
                   </option>
                 ))}

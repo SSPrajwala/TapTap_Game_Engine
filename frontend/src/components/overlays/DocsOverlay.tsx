@@ -77,8 +77,8 @@ const SECTIONS: DocSection[] = [
         <P>Every game is defined by a single JSON configuration file with this structure:</P>
         <Block>{`{
   "id":          "my-game",
-  "plugin":      "quiz",          // quiz | puzzle | flashcard
-  "title":       "My Quiz Game",  // memory | sudoku | wordbuilder
+  "plugin":  "quiz",  // quiz|puzzle|flashcard|memory|sudoku|wordbuilder|tapblitz|binaryrunner
+  "title":   "My Quiz Game",
   "description": "...",
   "ui": { "emoji": "🧠" },
   "levels": [
@@ -250,6 +250,103 @@ GET  /api/auth/me
     ),
   },
   {
+    id: "motion-games",
+    icon: "🎮",
+    title: "Motion Games",
+    content: (
+      <>
+        <H>TapBlitz — Real-Time Aim Game</H>
+        <P>
+          Targets spawn, drift, and shrink on a canvas at 60fps. Players must click them before
+          their timer ring vanishes. Combo multipliers, particle explosions, and 5 target colours
+          (100–500 pts each) create an escalating challenge.
+        </P>
+        <Block>{`// TapBlitz JSON question config
+{
+  "type":           "tapblitz",
+  "duration":       30,      // wave length in seconds
+  "spawnRate":      1.8,     // targets per second
+  "targetLifetime": 2.5,     // seconds before miss
+  "targetSpeed":    55,      // drift speed px/s
+  "targetMinRadius": 16,
+  "targetMaxRadius": 42,
+  "maxMisses":      12
+}`}</Block>
+        <H>Binary Runner — Logic-Gate Endless Runner</H>
+        <P>
+          A 3-lane perspective runner where logic-gate obstacles (AND, OR, XOR, NAND, NOR) hurtle
+          toward you. Switch lanes to be in the lane whose answer (0 or 1) is correct before impact.
+          Speed ramps up continuously — survive the full stage duration to win.
+        </P>
+        <Block>{`// Binary Runner JSON question config
+{
+  "type":           "binaryrunner",
+  "duration":       40,        // stage duration in seconds
+  "initialSpeed":   55,
+  "maxSpeed":       110,
+  "speedRampPerSec":1.2,
+  "spawnInterval":  3.2,       // seconds between obstacles
+  "operations": ["AND","OR","XOR","NAND","NOR"]
+}`}</Block>
+        <P>
+          Both motion game plugins manage their own <Code>requestAnimationFrame</Code> loop and
+          call <Code>onAnswer(result)</Code> when the wave/stage ends — fully compatible with
+          the engine's scoring, adaptive, and multiplayer systems.
+        </P>
+      </>
+    ),
+  },
+  {
+    id: "multiplayer",
+    icon: "🌐",
+    title: "Multiplayer",
+    content: (
+      <>
+        <H>Room Lifecycle</H>
+        <Block>{`waiting  →  countdown  →  playing  →  ended`}</Block>
+        <P>
+          The host creates a room, picks a game, and all players mark Ready. The host then starts
+          the game — a 3-2-1 countdown fires, then questions are served in order. Every player
+          answers simultaneously; once all connected players have answered, the server auto-advances
+          after 1.5 seconds.
+        </P>
+        <H>Socket.io Event Contract</H>
+        <Block>{`// Client → Server
+room:create    { playerName }
+room:join      { code, playerName }
+room:ready     { ready: boolean }
+room:selectGame{ gameId, gameTitle, questionCount }
+room:start     (host only)
+game:answer    { roomCode, correct, pointsAwarded }
+room:leave
+
+// Server → Client
+room:created   { room }
+room:joined    { room }
+room:updated   { room }
+room:error     { message }
+game:countdown { seconds }
+game:start     { room }
+game:question  { index }
+game:scoreUpdate{ leaderboard }
+game:end       { leaderboard }`}</Block>
+        <H>How to Use</H>
+        <P>
+          Click <strong style={{ color: "#00D4FF" }}>🌐 Multiplayer</strong> in the nav bar →
+          Connect → Create Room (or join with a 6-char code) → Host picks game from dropdown →
+          All players click Mark Ready → Host clicks Start Game. Works with every built-in game type.
+        </P>
+        <H>Backend Setup</H>
+        <Block>{`# In /backend
+npm install
+npm run dev   # starts Socket.io on port 3001
+
+# Frontend reads VITE_API_URL from .env
+VITE_API_URL=http://localhost:3001/api`}</Block>
+      </>
+    ),
+  },
+  {
     id: "future",
     icon: "🚀",
     title: "Roadmap",
@@ -258,10 +355,14 @@ GET  /api/auth/me
         <P>The engine is designed to grow. Planned future capabilities:</P>
         <ul style={{ color: "rgba(232,224,255,0.72)", fontFamily: "Exo 2, sans-serif", fontSize: "0.85rem", lineHeight: 2, paddingLeft: "20px" }}>
           <li>AI-based difficulty prediction from historical performance</li>
-          <li>Real-time multiplayer via WebSockets</li>
+          <li><s style={{ opacity: 0.45 }}>Real-time multiplayer via WebSockets</s>{" "}
+            <span style={{ color: "#22FFAA", fontSize: "0.78rem" }}>✅ Shipped!</span></li>
+          <li><s style={{ opacity: 0.45 }}>Motion game support</s>{" "}
+            <span style={{ color: "#22FFAA", fontSize: "0.78rem" }}>✅ Shipped! (TapBlitz + Binary Runner)</span></li>
           <li>Campus-level leaderboard clustering</li>
           <li>Skill analytics dashboard for institutions</li>
           <li>Behavioral performance analytics &amp; skill gap detection</li>
+          <li>Mobile touch controls for motion games</li>
         </ul>
       </>
     ),
@@ -273,7 +374,7 @@ export const DocsOverlay: React.FC<Props> = ({ open, onClose }) => {
   const active = SECTIONS.find(s => s.id === activeId) ?? SECTIONS[0]
 
   return (
-    <SideOverlay open={open} onClose={onClose} title="Documentation" subtitle="TapTap Engine v1.0" width={560}>
+    <SideOverlay open={open} onClose={onClose} title="Documentation" subtitle="TapTap Engine v2.0 · 8 Game Types · Multiplayer" width={560}>
       <div style={{ display: "flex", gap: "16px", minHeight: "100%" }}>
 
         {/* Sidebar nav */}
