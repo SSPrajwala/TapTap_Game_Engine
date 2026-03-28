@@ -245,27 +245,29 @@ function selectGame(socketId, gameId, gameTitle, questionCount) {
 }
 
 function startGame(socketId) {
-  for (const room of rooms.values()) {
-    if (room.hostSocketId !== socketId)   return { error: "Only the host can start." }
-    if (room.status !== "waiting")        return { error: "Game already started." }
-    if (!room.gameId)                     return { error: "Select a game first." }
+  // First find the room this socket belongs to, THEN verify host.
+  // (The old loop used `return` on the first non-matching room — wrong if
+  //  multiple rooms exist in memory, e.g. from previous TTL-pending sessions.)
+  const room = getRoomBySocket(socketId)
+  if (!room)                            return { error: "Room not found." }
+  if (room.hostSocketId !== socketId)   return { error: "Only the host can start." }
+  if (room.status !== "waiting")        return { error: "Game already started." }
+  if (!room.gameId)                     return { error: "Select a game first." }
 
-    const connected = [...room.players.values()].filter(p => !p.disconnected)
-    if (connected.length < 1)             return { error: "Need at least 1 connected player." }
+  const connected = [...room.players.values()].filter(p => !p.disconnected)
+  if (connected.length < 1)            return { error: "Need at least 1 connected player." }
 
-    room.status               = "countdown"
-    room.startedAt            = Date.now()
-    room.currentQuestionIndex = 0
+  room.status               = "countdown"
+  room.startedAt            = Date.now()
+  room.currentQuestionIndex = 0
 
-    for (const p of room.players.values()) {
-      p.score            = 0
-      p.correct          = 0
-      p.answers          = 0
-      p.finishedQuestion = false
-    }
-    return { room }
+  for (const p of room.players.values()) {
+    p.score            = 0
+    p.correct          = 0
+    p.answers          = 0
+    p.finishedQuestion = false
   }
-  return { error: "Room not found." }
+  return { room }
 }
 
 function advanceQuestion(roomCode) {
