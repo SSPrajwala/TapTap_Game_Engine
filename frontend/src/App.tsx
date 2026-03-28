@@ -15,6 +15,7 @@ import { DocsOverlay }                from "./components/overlays/DocsOverlay"
 import { SignInOverlay }              from "./components/overlays/SignInOverlay"
 import { ProfileOverlay }             from "./components/overlays/ProfileOverlay"
 import { AdminAuthOverlay }           from "./components/overlays/AdminAuthOverlay"
+import { MultiplayerPage }            from "./pages/MultiplayerPage"
 import type { GameConfig }            from "./types/engine.types"
 
 import logicGameRaw      from "./games/logic-game.json"
@@ -23,11 +24,12 @@ import worldCapitalsRaw  from "./games/world-capitals.json"
 import emojiMemoryRaw    from "./games/emoji-memory.json"
 import sudokuRaw         from "./games/sudoku.json"
 import wordbuilderRaw    from "./games/wordbuilder.json"
+import tapblitzRaw       from "./games/tapblitz.json"
 
 import "./plugins"
 import "./styles.css"
 
-type Page    = "library" | "game" | "leaderboard" | "admin"
+type Page    = "library" | "game" | "leaderboard" | "admin" | "multiplayer"
 type Overlay = "about" | "docs" | "signin" | "profile" | "adminAuth" | null
 
 // Static fallback games (used until backend responds)
@@ -38,6 +40,7 @@ const STATIC_GAMES: GameConfig[] = [
   emojiMemoryRaw    as unknown as GameConfig,
   sudokuRaw         as unknown as GameConfig,
   wordbuilderRaw    as unknown as GameConfig,
+  tapblitzRaw       as unknown as GameConfig,
 ]
 
 const PLUGIN_COLORS: Record<string, string> = {
@@ -47,6 +50,7 @@ const PLUGIN_COLORS: Record<string, string> = {
   memory:      "linear-gradient(135deg,#22FFAA,#00D4FF)",
   sudoku:      "linear-gradient(135deg,#FFD700,#FF8C00)",
   wordbuilder: "linear-gradient(135deg,#FF2D78,#A855F7)",
+  tapblitz:    "linear-gradient(135deg,#FFD700,#FF2D78)",
 }
 
 const PLUGIN_TEXT: Record<string, string> = {
@@ -56,6 +60,7 @@ const PLUGIN_TEXT: Record<string, string> = {
   memory:      "#22FFAA",
   sudoku:      "#FFD700",
   wordbuilder: "#FF2D78",
+  tapblitz:    "#FFD700",
 }
 
 // Logo image used in header — actual logo.png asset
@@ -182,6 +187,21 @@ function AppInner() {
     )
   }
 
+  // ── Multiplayer page ───────────────────────────────────────────────────────
+  if (page === "multiplayer") {
+    return (
+      <div style={{ minHeight: "100vh" }}>
+        <HexBackground />
+        <TopRibbon {...ribbonProps} />
+        <div className="app-shell" style={{ paddingTop: "20px" }}>
+          <MultiplayerPage games={games} onBack={() => setPage("library")} />
+        </div>
+        <DeerMascot state="idle" size={80} />
+        {overlays}
+      </div>
+    )
+  }
+
   // ── Leaderboard page ───────────────────────────────────────────────────────
   if (page === "leaderboard") {
     return (
@@ -246,11 +266,12 @@ function AppInner() {
               </p>
             </div>
           </div>
-          <p style={{ marginTop: "10px" }}>Adaptive · Plugin-based · JSON-driven · 6 Game Types</p>
+          <p style={{ marginTop: "10px" }}>Adaptive · Plugin-based · JSON-driven · 7 Game Types · Multiplayer</p>
         </header>
 
         <nav className="app-nav animate-in stagger-1">
           <button className="nav-btn nav-btn-active">🎮 Games</button>
+          <button className="nav-btn" onClick={() => setPage("multiplayer")}>🌐 Multiplayer</button>
           <button className="nav-btn" onClick={() => setPage("leaderboard")}>🏆 Leaderboard</button>
           <button
             className="nav-btn"

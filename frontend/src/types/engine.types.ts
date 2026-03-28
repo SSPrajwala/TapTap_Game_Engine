@@ -61,6 +61,19 @@ export interface WordBuilderQuestion extends BaseQuestion {
   bonusWords?: string[]   // extra hard words worth bonus points
 }
 
+// ── TapBlitz (motion aim game) ────────────────────────────────────────────────
+export interface TapBlitzQuestion extends BaseQuestion {
+  type: "tapblitz"
+  instruction: string
+  duration: number          // wave seconds
+  spawnRate: number         // targets per second
+  targetLifetime: number    // seconds before vanish
+  targetSpeed: number       // drift pixels/sec
+  targetMinRadius: number
+  targetMaxRadius: number
+  maxMisses: number
+}
+
 export type Question =
   | QuizQuestion
   | PuzzleQuestion
@@ -68,6 +81,7 @@ export type Question =
   | MemoryQuestion
   | SudokuQuestion
   | WordBuilderQuestion
+  | TapBlitzQuestion
 
 export interface Level {
   id: string

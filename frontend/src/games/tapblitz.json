@@ -1,0 +1,147 @@
+{
+  "id": "tapblitz",
+  "title": "TapBlitz",
+  "description": "Real-time aim & reflex game. Click moving targets before they vanish. Combos multiply your score. Can you beat 5000?",
+  "plugin": "tapblitz",
+  "version": "1.0.0",
+  "ui": {
+    "emoji": "⚡",
+    "showTimer": true,
+    "showProgress": true,
+    "showStreak": true,
+    "accentColor": "#A855F7"
+  },
+  "scoring": {
+    "basePoints": 100,
+    "timeBonus": false,
+    "timeBonusPerSecond": 0,
+    "streakMultiplier": false,
+    "streakThreshold": 3,
+    "streakMultiplierValue": 1.5
+  },
+  "questions": [
+    {
+      "id": "tb-wave-1",
+      "type": "tapblitz",
+      "difficulty": "easy",
+      "points": 500,
+      "instruction": "Warm Up — Click the targets!",
+      "duration": 30,
+      "spawnRate": 1.2,
+      "targetLifetime": 3.5,
+      "targetSpeed": 55,
+      "targetMinRadius": 28,
+      "targetMaxRadius": 44,
+      "maxMisses": 12
+    },
+    {
+      "id": "tb-wave-2",
+      "type": "tapblitz",
+      "difficulty": "easy",
+      "points": 700,
+      "instruction": "Picking Up Speed…",
+      "duration": 30,
+      "spawnRate": 1.8,
+      "targetLifetime": 3.0,
+      "targetSpeed": 75,
+      "targetMinRadius": 24,
+      "targetMaxRadius": 42,
+      "maxMisses": 10
+    },
+    {
+      "id": "tb-wave-3",
+      "type": "tapblitz",
+      "difficulty": "medium",
+      "points": 1000,
+      "instruction": "Medium — Stay focused!",
+      "duration": 35,
+      "spawnRate": 2.2,
+      "targetLifetime": 2.5,
+      "targetSpeed": 95,
+      "targetMinRadius": 20,
+      "targetMaxRadius": 38,
+      "maxMisses": 9
+    },
+    {
+      "id": "tb-wave-4",
+      "type": "tapblitz",
+      "difficulty": "medium",
+      "points": 1200,
+      "instruction": "Medium+ — Targets are faster!",
+      "duration": 35,
+      "spawnRate": 2.6,
+      "targetLifetime": 2.2,
+      "targetSpeed": 115,
+      "targetMinRadius": 18,
+      "targetMaxRadius": 36,
+      "maxMisses": 8
+    },
+    {
+      "id": "tb-wave-5",
+      "type": "tapblitz",
+      "difficulty": "hard",
+      "points": 1500,
+      "instruction": "Hard — Maximum intensity!",
+      "duration": 40,
+      "spawnRate": 3.2,
+      "targetLifetime": 1.8,
+      "targetSpeed": 140,
+      "targetMinRadius": 14,
+      "targetMaxRadius": 30,
+      "maxMisses": 7
+    },
+    {
+      "id": "tb-wave-6",
+      "type": "tapblitz",
+      "difficulty": "hard",
+      "points": 2000,
+      "instruction": "Elite — Tiny targets, blazing speed!",
+      "duration": 45,
+      "spawnRate": 4.0,
+      "targetLifetime": 1.5,
+      "targetSpeed": 170,
+      "targetMinRadius": 10,
+      "targetMaxRadius": 24,
+      "maxMisses": 6
+    }
+  ],
+  "levels": [
+    {
+      "id": "tapblitz-level-1",
+      "title": "Rookie Range",
+      "description": "Learn the ropes — slow targets, generous timing",
+      "questionIds": ["tb-wave-1", "tb-wave-2"],
+      "passingScore": 600
+    },
+    {
+      "id": "tapblitz-level-2",
+      "title": "Sharpshooter",
+      "description": "Faster targets, tighter windows — build your combo",
+      "questionIds": ["tb-wave-3", "tb-wave-4"],
+      "passingScore": 1400,
+      "unlockCondition": { "previousLevelId": "tapblitz-level-1", "minScore": 600 }
+    },
+    {
+      "id": "tapblitz-level-3",
+      "title": "Blitz Master",
+      "description": "Elite difficulty — only the fastest survive",
+      "questionIds": ["tb-wave-5", "tb-wave-6"],
+      "passingScore": 2200,
+      "unlockCondition": { "previousLevelId": "tapblitz-level-2", "minScore": 1400 }
+    }
+  ],
+  "adaptiveRules": [
+    {
+      "condition": { "metric": "accuracy", "operator": ">=", "value": 0.85 },
+      "action": { "type": "adjustDifficulty", "payload": { "difficulty": "hard" } }
+    },
+    {
+      "condition": { "metric": "accuracy", "operator": "<", "value": 0.35 },
+      "action": { "type": "adjustDifficulty", "payload": { "difficulty": "easy" } }
+    },
+    {
+      "condition": { "metric": "streak", "operator": ">=", "value": 5 },
+      "action": { "type": "awardBonus", "payload": { "points": 250 } }
+    }
+  ]
+}
