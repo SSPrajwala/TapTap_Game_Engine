@@ -121,21 +121,22 @@ export class LeaderboardService {
       if (!res.ok) throw new Error("not ok")
       const data: Array<{
         id: string; playerName: string; gameId: string; gameTitle: string
-        score: number; accuracy: number; timeTaken: number; difficulty: string; timestamp: number
+        score: number; accuracy: number; totalAnswered: number
+        timeTaken: number; difficulty: string; timestamp: number
       }> = await res.json()
       return data.map(d => ({
-        id:         d.id,
-        playerName: d.playerName,
-        gameId:     d.gameId,
-        gameTitle:  d.gameTitle,
-        score:      d.score,
-        accuracy:   d.accuracy,
-        timeTaken:  d.timeTaken,
-        difficulty: d.difficulty as "easy" | "medium" | "hard",
-        timestamp:  d.timestamp,
+        id:            d.id,
+        playerName:    d.playerName,
+        gameId:        d.gameId,
+        gameTitle:     d.gameTitle,
+        score:         d.score,
+        accuracy:      d.accuracy,
+        totalAnswered: d.totalAnswered ?? 0,
+        timeTaken:     d.timeTaken,
+        difficulty:    d.difficulty as "easy" | "medium" | "hard",
+        timestamp:     d.timestamp,
       }))
     } catch {
-      // Fall back to localStorage
       return this.getGlobal()
     }
   }
@@ -150,18 +151,20 @@ export class LeaderboardService {
       if (!res.ok) throw new Error("not ok")
       const data: Array<{
         id: string; playerName: string; gameId: string; gameTitle: string
-        score: number; accuracy: number; timeTaken: number; difficulty: string; timestamp: number
+        score: number; accuracy: number; totalAnswered: number
+        timeTaken: number; difficulty: string; timestamp: number
       }> = await res.json()
       return data.map(d => ({
-        id:         d.id,
-        playerName: d.playerName,
-        gameId:     d.gameId,
-        gameTitle:  d.gameTitle,
-        score:      d.score,
-        accuracy:   d.accuracy,
-        timeTaken:  d.timeTaken,
-        difficulty: d.difficulty as "easy" | "medium" | "hard",
-        timestamp:  d.timestamp,
+        id:            d.id,
+        playerName:    d.playerName,
+        gameId:        d.gameId,
+        gameTitle:     d.gameTitle,
+        score:         d.score,
+        accuracy:      d.accuracy,
+        totalAnswered: d.totalAnswered ?? 0,
+        timeTaken:     d.timeTaken,
+        difficulty:    d.difficulty as "easy" | "medium" | "hard",
+        timestamp:     d.timestamp,
       }))
     } catch {
       return this.getForGame(gameId)
