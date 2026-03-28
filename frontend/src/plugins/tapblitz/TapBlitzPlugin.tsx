@@ -97,20 +97,6 @@ const HIT_ANIM_DURATION = 400  // ms
 
 // ── Draw utilities ────────────────────────────────────────────────────────────
 
-function drawGlow(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string, alpha: number) {
-  const g = ctx.createRadialGradient(x, y, 0, x, y, r * 2.2)
-  g.addColorStop(0, color.replace(")", `, ${alpha})`).replace("rgb(", "rgba(").replace("#", "rgba(").replace(/^rgba\(#/, "rgba("))
-  // simpler: just use a shadow
-  ctx.save()
-  ctx.shadowColor   = color
-  ctx.shadowBlur    = r * 1.8
-  ctx.globalAlpha   = alpha
-  ctx.beginPath()
-  ctx.arc(x, y, r, 0, Math.PI * 2)
-  ctx.fillStyle = color
-  ctx.fill()
-  ctx.restore()
-}
 
 function hexToRgba(hex: string, a: number): string {
   const r = parseInt(hex.slice(1, 3), 16)
@@ -123,8 +109,8 @@ function hexToRgba(hex: string, a: number): string {
 
 const TapBlitzComponent: React.FC<PluginRenderProps<TapBlitzQuestion>> = ({
   question,
-  stats,
-  config,
+  stats: _stats,
+  config: _config,
   onAnswer,
 }) => {
   const canvasRef   = useRef<HTMLCanvasElement>(null)
@@ -168,7 +154,6 @@ const TapBlitzComponent: React.FC<PluginRenderProps<TapBlitzQuestion>> = ({
   // ── Spawn a target ────────────────────────────────────────────────────────
   const spawnTarget = useCallback((now: number) => {
     const g   = gameRef.current
-    const c   = COLORS[Math.floor(Math.random() * COLORS.length)]
     const r   = question.targetMinRadius + Math.random() * (question.targetMaxRadius - question.targetMinRadius)
     const x   = r + Math.random() * (CANVAS_W - 2 * r)
     const y   = r + Math.random() * (CANVAS_H - 2 * r)

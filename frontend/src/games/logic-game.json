@@ -308,25 +308,11 @@
         "value": 3
       },
       "action": {
-        "type": "awardBonus",
+        "type": "adjustDifficulty",
         "payload": {
-          "points": 50
+          "difficulty": "hard"
         }
       }
     }
-  ],
-  "scoring": {
-    "basePoints": 100,
-    "timeBonus": true,
-    "timeBonusPerSecond": 3,
-    "streakMultiplier": true,
-    "streakThreshold": 3,
-    "streakMultiplierValue": 1.5
-  },
-  "ui": {
-    "showTimer": true,
-    "showProgress": true,
-    "showStreak": true,
-    "emoji": "🧠"
-  }
+  ]
 }

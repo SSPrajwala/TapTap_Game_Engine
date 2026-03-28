@@ -115,9 +115,11 @@ const IdleScreen: React.FC<{
         ))}
       </div>
 
-      <PrimaryBtn onClick={onConnect} style={{ marginTop: "28px", width: "100%" } as React.CSSProperties}>
-        Connect to Multiplayer
-      </PrimaryBtn>
+      <div style={{ marginTop: "28px" }}>
+        <PrimaryBtn onClick={onConnect}>
+          Connect to Multiplayer
+        </PrimaryBtn>
+      </div>
     </GlassCard>
   </div>
 )

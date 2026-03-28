@@ -61,7 +61,6 @@ const W = 800, H = 500
 
 // 3D perspective: z goes from FAR_Z (far) to 0 (at camera)
 const FAR_Z  = 220
-const NEAR_Z = 0
 // Two lanes: left = 0, right = 1  (centre gap is the road divider)
 const LANE_X = [W * 0.28, W * 0.72]   // screen X of each lane centre at horizon
 const LANE_X_NEAR = [W * 0.18, W * 0.82] // screen X spread at screen bottom
@@ -69,10 +68,6 @@ const LANE_X_NEAR = [W * 0.18, W * 0.82] // screen X spread at screen bottom
 const HORIZON_Y = H * 0.36
 const FLOOR_Y   = H * 0.96
 
-const OBSTACLE_COLORS = [
-  { fill: "#FF2D78", border: "#FFB3CC", glow: "#FF2D78" },  // red  — wrong lane
-  { fill: "#22FFAA", border: "#A7F3D0", glow: "#22FFAA" },  // green — correct lane (revealed on approach)
-]
 
 // ── Challenge generation ──────────────────────────────────────────────────────
 
