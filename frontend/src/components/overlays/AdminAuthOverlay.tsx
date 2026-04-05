@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 
-const ADMIN_API = "http://localhost:3001/api/admin"
+const ADMIN_API = (import.meta.env.VITE_API_URL ?? "http://localhost:3001/api") + "/admin"
 
 interface Props {
   open:      boolean

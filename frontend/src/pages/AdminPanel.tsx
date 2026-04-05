@@ -4,7 +4,7 @@ import type {
   QuizQuestion, FlashcardQuestion, MemoryQuestion, WordBuilderQuestion,
 } from "../types/engine.types"
 
-const ADMIN_API = "http://localhost:3001/api/admin"
+const ADMIN_API = (import.meta.env.VITE_API_URL ?? "http://localhost:3001/api") + "/admin"
 
 interface Props {
   games:      GameConfig[]
