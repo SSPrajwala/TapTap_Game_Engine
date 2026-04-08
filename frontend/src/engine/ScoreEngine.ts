@@ -1,8 +1,14 @@
 import type { Question, PlayerStats, ScoringConfig, Difficulty } from "../types/engine.types"
 
+const DEFAULT_SCORING: ScoringConfig = {
+  basePoints: 100, timeBonus: false, timeBonusPerSecond: 0,
+  streakMultiplier: true, streakThreshold: 3, streakMultiplierValue: 1.5,
+  penalties: false, penaltyPerWrong: 0,
+}
+
 export class ScoreEngine {
   private readonly cfg: ScoringConfig
-  constructor(cfg: ScoringConfig) { this.cfg = cfg }
+  constructor(cfg?: ScoringConfig) { this.cfg = cfg ?? DEFAULT_SCORING }
 
   calculate(q: Question, correct: boolean, timeTaken: number, streak: number, override?: (q: Question, correct: boolean, t: number, cfg: ScoringConfig) => number): number {
     if (!correct) return 0

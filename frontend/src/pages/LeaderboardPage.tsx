@@ -25,11 +25,14 @@ export const LeaderboardPage: React.FC<Props> = ({ onBack }) => {
     setLoading(true)
     try {
       const all = await LeaderboardService.fetchGlobal()
-      // Also merge with localStorage so offline scores appear too
-      const local = LeaderboardService.getAll()
+      // Merge local scores only if backend is empty (offline fallback)
+      // Deduplicate by playerName+gameId+score+timeTaken fingerprint
+      const local = all.length === 0 ? LeaderboardService.getAll() : []
       const merged = [...all]
+      const seen = new Set(all.map(e => `${e.playerName}|${e.gameId}|${e.score}|${e.timeTaken}`))
       for (const lEntry of local) {
-        if (!merged.find(e => e.id === lEntry.id)) merged.push(lEntry)
+        const key = `${lEntry.playerName}|${lEntry.gameId}|${lEntry.score}|${lEntry.timeTaken}`
+        if (!seen.has(key)) { seen.add(key); merged.push(lEntry) }
       }
       merged.sort((a, b) => b.score - a.score || a.timeTaken - b.timeTaken)
 

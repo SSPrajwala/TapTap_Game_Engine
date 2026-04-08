@@ -18,8 +18,12 @@ interface Props {
     correctAnswer?: string
     studentAnswer?: string
   }
-  /** Called when user saves an AI-generated game */
+  /** Called when user saves an AI-generated game to My Games */
   onGameGenerated?: (config: Record<string, unknown>) => void
+  /** Called when ADMIN publishes game to all users (global library) */
+  onPublishGame?: (config: Record<string, unknown>) => void
+  /** True if current user is admin */
+  isAdmin?: boolean
 }
 
 type Tab = "chat" | "generate" | "report"
@@ -38,7 +42,7 @@ const QUICK_QUESTIONS = [
   "What aptitude topics should I focus on for TCS NQT?",
 ]
 
-export const BlackbuckAI: React.FC<Props> = ({ isOpen, onClose, explainContext, onGameGenerated }) => {
+export const BlackbuckAI: React.FC<Props> = ({ isOpen, onClose, explainContext, onGameGenerated, onPublishGame, isAdmin }) => {
   const { token, user } = useAuth()
   const [tab,         setTab]         = useState<Tab>("chat")
   const [messages,    setMessages]    = useState<ChatMsg[]>([])
@@ -375,14 +379,24 @@ export const BlackbuckAI: React.FC<Props> = ({ isOpen, onClose, explainContext, 
                   <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.78rem", marginBottom: "12px" }}>
                     {(genResult.questions as unknown[])?.length ?? 0} questions generated
                   </div>
-                  {onGameGenerated && (
-                    <button onClick={() => onGameGenerated(genResult)} style={{
-                      ...btnStyle, background: "linear-gradient(135deg, #22FFAA, #00D4FF)",
-                      color: "#0A0A1A", fontWeight: 800,
-                    }}>
-                      💾 Save to My Games
-                    </button>
-                  )}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {onGameGenerated && (
+                      <button onClick={() => onGameGenerated(genResult)} style={{
+                        ...btnStyle, background: "linear-gradient(135deg, #22FFAA, #00D4FF)",
+                        color: "#0A0A1A", fontWeight: 800,
+                      }}>
+                        💾 Save to My Games
+                      </button>
+                    )}
+                    {isAdmin && onPublishGame && (
+                      <button onClick={() => onPublishGame(genResult)} style={{
+                        ...btnStyle, background: "linear-gradient(135deg, #FF6B35, #FF3CAC)",
+                        color: "#fff", fontWeight: 800,
+                      }}>
+                        🌐 Publish to All Games
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

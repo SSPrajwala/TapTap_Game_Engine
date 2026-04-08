@@ -1,6 +1,6 @@
 /**
- * AI Routes — Gemini-powered generation + analysis
- * Uses Google Gemini 1.5 Flash (free tier: 1500 req/day, 15 req/min)
+ * AI Routes — Groq-powered generation + analysis
+ * Uses Groq free tier: llama-3.3-70b-versatile (14,400 req/day, no credit card)
  *
  * POST /api/ai/generate/quiz         → full quiz game JSON
  * POST /api/ai/generate/flashcard    → flashcard game JSON
@@ -14,101 +14,281 @@
  */
 
 require("dotenv").config()
-const express                = require("express")
-const { GoogleGenerativeAI } = require("@google/generative-ai")
-const prisma                 = require("../prisma/client")
-const { requireAuth }        = require("../middleware/auth")
+const express      = require("express")
+const Groq         = require("groq-sdk")
+const prisma       = require("../prisma/client")
+const { requireAuth } = require("../middleware/auth")
 
 const router = express.Router()
-const genAI  = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? "")
 
-// Gemini model — Flash is the free tier workhorse
-function getModel() {
-  return genAI.getGenerativeModel({ model: "gemini-1.5-flash" })
+// Lazy-init Groq client
+let _groq = null
+function getGroq() {
+  if (!_groq) _groq = new Groq({ apiKey: process.env.GROQ_API_KEY ?? "" })
+  return _groq
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
- * Call Gemini with a given system context + user prompt.
+ * Call Groq with a system prompt + user prompt.
  * Returns the raw text response.
  */
 async function callGemini(systemPrompt, userPrompt) {
-  const model  = getModel()
-  const result = await model.generateContent([
-    { role: "user", parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] },
-  ])
-  return result.response.text()
+  const response = await getGroq().chat.completions.create({
+    model: "llama-3.3-70b-versatile",
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user",   content: userPrompt   },
+    ],
+    temperature: 0.7,
+    max_tokens:  4096,
+  })
+  return response.choices[0].message.content
 }
 
 /**
- * Call Gemini and parse the JSON from the response.
- * Gemini Flash sometimes wraps JSON in ```json ... ``` fences — strip them.
+ * Call Groq and parse JSON from the response.
+ * LLMs sometimes wrap JSON in ```json ... ``` fences — strip them.
  */
 async function callGeminiJSON(systemPrompt, userPrompt) {
   const raw  = await callGemini(systemPrompt, userPrompt)
-  const text = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim()
+  const text = raw
+    .replace(/^```json\s*/im, "")
+    .replace(/^```\s*/im,     "")
+    .replace(/```\s*$/im,     "")
+    .trim()
   return JSON.parse(text)
+}
+
+/**
+ * Validate and auto-fix a Gemini-generated quiz GameConfig so it will
+ * load correctly in the TapTap engine regardless of minor AI deviations.
+ */
+function fixQuizConfig(config) {
+  if (!config || typeof config !== "object") throw new Error("AI returned invalid JSON structure")
+
+  config.version = config.version ?? "1.0.0"
+  config.plugin  = "quiz"
+  config.ui      = config.ui ?? { emoji: "🧠", showProgress: true, showStreak: true }
+  config.scoring = config.scoring ?? {
+    basePoints: 100, timeBonus: false, timeBonusPerSecond: 0,
+    streakMultiplier: true, streakThreshold: 3, streakMultiplierValue: 1.5,
+    penalties: false, penaltyPerWrong: 0,
+  }
+  config.adaptiveRules = config.adaptiveRules ?? [
+    { condition: { metric: "accuracy", operator: "<", value: 0.4 }, action: { type: "adjustDifficulty", payload: { difficulty: "easy" } } },
+    { condition: { metric: "accuracy", operator: ">", value: 0.8 }, action: { type: "adjustDifficulty", payload: { difficulty: "hard" } } },
+  ]
+
+  if (!Array.isArray(config.questions) || config.questions.length === 0)
+    throw new Error("AI generated no questions")
+
+  // ALWAYS normalize question IDs to q1, q2, q3... — prevents any ID mismatch
+  config.questions = config.questions.map((q, i) => {
+    const fixed = { ...q }
+    fixed.id         = `q${i + 1}`          // force simple IDs — no mismatch possible
+    fixed.type       = "quiz"
+    fixed.difficulty = ["easy","medium","hard"].includes(fixed.difficulty) ? fixed.difficulty : "medium"
+    fixed.points     = fixed.points ?? (fixed.difficulty === "hard" ? 200 : fixed.difficulty === "easy" ? 100 : 150)
+    fixed.timeLimit  = fixed.timeLimit ?? 30
+
+    // Remap: LLMs use "question"/"text"/"stem" — engine needs "prompt"
+    fixed.prompt = fixed.prompt ?? fixed.question ?? fixed.text ?? fixed.stem ?? `Question ${i + 1}`
+    delete fixed.question; delete fixed.text; delete fixed.stem
+
+    // Ensure exactly 4 options
+    if (!Array.isArray(fixed.options) || fixed.options.length < 2)
+      fixed.options = ["True", "False", "Cannot determine", "Not applicable"]
+    while (fixed.options.length < 4) fixed.options.push(`Option ${fixed.options.length + 1}`)
+    fixed.options = fixed.options.slice(0, 4).map(String)
+
+    // Fix correctIndex — AI might send "answer" string or wrong type
+    if (typeof fixed.correctIndex !== "number") {
+      const answerStr = (fixed.answer ?? fixed.correctAnswer ?? "").toString().toLowerCase().trim()
+      const idx = fixed.options.findIndex(o => o.toString().toLowerCase().trim() === answerStr)
+      fixed.correctIndex = idx >= 0 ? idx : 0
+    }
+    fixed.correctIndex = Math.min(Math.max(0, Math.floor(Number(fixed.correctIndex))), 3)
+    delete fixed.answer; delete fixed.correctAnswer
+
+    fixed.explanation = fixed.explanation ?? "Review your notes on this topic."
+    return fixed
+  })
+
+  // ALWAYS rebuild levels from scratch using normalized IDs — guaranteed to match
+  const allIds    = config.questions.map(q => q.id)
+  const easyIds   = config.questions.filter(q => q.difficulty === "easy").map(q => q.id)
+  const mediumIds = config.questions.filter(q => q.difficulty === "medium").map(q => q.id)
+  const hardIds   = config.questions.filter(q => q.difficulty === "hard").map(q => q.id)
+
+  if (easyIds.length > 0 || mediumIds.length > 0 || hardIds.length > 0) {
+    config.levels = []
+    if (easyIds.length   > 0) config.levels.push({ id: "level-easy",   title: "Level 1 — Easy",   description: "Warm-up questions",    questionIds: easyIds,   passingScore: 50 })
+    if (mediumIds.length > 0) config.levels.push({ id: "level-medium", title: "Level 2 — Medium", description: "Core questions",        questionIds: mediumIds, passingScore: 60 })
+    if (hardIds.length   > 0) config.levels.push({ id: "level-hard",   title: "Level 3 — Hard",   description: "Advanced questions",    questionIds: hardIds,   passingScore: 70 })
+  } else {
+    config.levels = [{ id: "level-1", title: "All Questions", description: "Complete the quiz", questionIds: allIds, passingScore: 60 }]
+  }
+
+  return config
+}
+
+/**
+ * Validate and auto-fix a Gemini-generated flashcard GameConfig.
+ */
+function fixFlashcardConfig(config) {
+  if (!config || typeof config !== "object") throw new Error("AI returned invalid JSON structure")
+
+  config.version = config.version ?? "1.0.0"
+  config.plugin  = "flashcard"
+  config.ui      = config.ui ?? { emoji: "🃏", showProgress: true, showStreak: false }
+  config.scoring = config.scoring ?? {
+    basePoints: 100, timeBonus: false, timeBonusPerSecond: 0,
+    streakMultiplier: false, streakThreshold: 3, streakMultiplierValue: 1,
+    penalties: false, penaltyPerWrong: 0,
+  }
+  config.adaptiveRules = []
+
+  if (!Array.isArray(config.questions) || config.questions.length === 0)
+    throw new Error("AI generated no flashcard questions")
+
+  // ALWAYS normalize IDs to q1, q2, ... — guarantees level IDs match
+  config.questions = config.questions.map((q, i) => {
+    const fixed = { ...q }
+    fixed.id         = `q${i + 1}`           // force simple IDs
+    fixed.type       = "flashcard"
+    fixed.difficulty = ["easy","medium","hard"].includes(fixed.difficulty) ? fixed.difficulty : "medium"
+    fixed.points     = fixed.points ?? 100
+
+    // Remap to front/back — LLMs use prompt/answer/term/definition/question
+    fixed.front = fixed.front ?? fixed.prompt ?? fixed.term ?? fixed.question ?? `Card ${i + 1}`
+    fixed.back  = fixed.back  ?? fixed.answer ?? fixed.definition ?? fixed.explanation ?? "See your notes"
+
+    // Clean up non-standard fields
+    delete fixed.prompt; delete fixed.options; delete fixed.answer
+    delete fixed.correctIndex; delete fixed.term; delete fixed.definition
+    delete fixed.question; delete fixed.text; delete fixed.explanation
+
+    fixed.category = fixed.category ?? fixed.tags?.[0] ?? "General"
+    return fixed
+  })
+
+  // ALWAYS rebuild levels with normalized IDs
+  const allIds = config.questions.map(q => q.id)
+  config.levels = [{ id: "level-1", title: "All Cards", description: "Study all flashcards", questionIds: allIds, passingScore: 50 }]
+
+  return config
 }
 
 // ── System Prompts ────────────────────────────────────────────────────────────
 
 const GAME_SCHEMA = `
-You are TapTap AI, an expert educational game designer. You must return ONLY valid JSON with NO explanation, NO markdown, NO extra text.
+You are TapTap AI, an expert educational game designer. You must return ONLY valid JSON with NO explanation, NO markdown, NO extra text — just the raw JSON object.
 
-The TapTap Game Engine accepts quiz games in this exact TypeScript shape:
-interface GameConfig {
-  id: string           // kebab-case, unique
-  title: string
-  plugin: "quiz" | "flashcard"
-  version: "1.0.0"
-  description: string
-  questions: Question[]
-  adaptiveRules?: AdaptiveRule[]
-  settings?: { timeLimit?: number, allowRetry?: boolean }
-}
+CRITICAL: The TapTap engine uses this EXACT format. Any deviation will break the game loader.
 
-interface Question {
-  id: string           // "q1", "q2", ...
-  type: "mcq" | "true_false" | "fill_blank"
-  prompt: string
-  options?: string[]   // required for mcq (4 options), true_false (["True","False"])
-  answer: string       // exact match from options, or fill_blank answer
-  explanation: string  // why this answer is correct (shown after answering)
-  difficulty: "easy" | "medium" | "hard"
-  tags?: string[]
-}
-
-interface AdaptiveRule {
-  condition: { metric: "accuracy", operator: "lt" | "gt", value: number }
-  action: { type: "filter", difficulty: "easy" | "medium" | "hard" }
-}
-`
-
-const FLASHCARD_SCHEMA = `
-You are TapTap AI, an expert educational game designer. You must return ONLY valid JSON with NO explanation, NO markdown, NO extra text.
-
-The TapTap flashcard plugin uses this exact shape:
+QUIZ GAME FORMAT:
 {
-  "id": "kebab-case-unique-id",
-  "title": "string",
-  "plugin": "flashcard",
+  "id": "ai-{topic-kebab}-{timestamp}",
+  "title": "Quiz title here",
+  "plugin": "quiz",
   "version": "1.0.0",
-  "description": "string",
+  "description": "Short description of what this quiz covers",
   "questions": [
     {
       "id": "q1",
-      "type": "true_false",
-      "prompt": "Front of flashcard — the question or term",
-      "options": ["True", "False"],
-      "answer": "True",
-      "explanation": "Explanation shown after flip",
-      "difficulty": "medium",
-      "tags": []
+      "type": "quiz",
+      "difficulty": "easy",
+      "points": 100,
+      "timeLimit": 30,
+      "prompt": "The full question text here?",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correctIndex": 2,
+      "explanation": "Explanation of why Option C is correct"
     }
-  ]
+  ],
+  "levels": [
+    {
+      "id": "level-easy",
+      "title": "Level 1 — Easy",
+      "description": "Beginner questions",
+      "questionIds": ["q1", "q2", "q3"],
+      "passingScore": 50
+    },
+    {
+      "id": "level-medium",
+      "title": "Level 2 — Medium",
+      "description": "Intermediate questions",
+      "questionIds": ["q4", "q5", "q6"],
+      "passingScore": 60
+    },
+    {
+      "id": "level-hard",
+      "title": "Level 3 — Hard",
+      "description": "Advanced questions",
+      "questionIds": ["q7", "q8", "q9"],
+      "passingScore": 70
+    }
+  ],
+  "adaptiveRules": [
+    { "condition": { "metric": "accuracy", "operator": "<", "value": 0.4 }, "action": { "type": "adjustDifficulty", "payload": { "difficulty": "easy" } } },
+    { "condition": { "metric": "accuracy", "operator": ">", "value": 0.8 }, "action": { "type": "adjustDifficulty", "payload": { "difficulty": "hard" } } }
+  ],
+  "ui": { "emoji": "🧠", "showProgress": true, "showStreak": true }
 }
-All items must have type "true_false" with options ["True","False"] for the flip-card mechanic.
+
+CRITICAL RULES:
+1. "type" for every question MUST be exactly "quiz" — never "mcq", "multiple_choice", or anything else
+2. "correctIndex" MUST be a NUMBER (0, 1, 2, or 3) — the index of the correct option in the "options" array
+3. NEVER use "answer" field — use "correctIndex" only
+4. "options" MUST have exactly 4 strings
+5. "levels" array is REQUIRED — each level references question IDs via "questionIds"
+6. ALL question IDs referenced in "questionIds" must exist in the "questions" array
+7. "points" should be 100 for easy, 150 for medium, 200 for hard
+`
+
+const FLASHCARD_SCHEMA = `
+You are TapTap AI, an expert educational game designer. You must return ONLY valid JSON with NO explanation, NO markdown, NO extra text — just the raw JSON object.
+
+CRITICAL: The TapTap engine uses this EXACT format for flashcard games.
+
+FLASHCARD GAME FORMAT:
+{
+  "id": "ai-flash-{topic-kebab}-{timestamp}",
+  "title": "Flashcard title here",
+  "plugin": "flashcard",
+  "version": "1.0.0",
+  "description": "Short description",
+  "questions": [
+    {
+      "id": "q1",
+      "type": "flashcard",
+      "difficulty": "medium",
+      "points": 100,
+      "front": "Term or question shown on front of card",
+      "back": "Definition or answer shown on back of card",
+      "category": "Category name (e.g. Algorithms, Vocabulary, etc.)"
+    }
+  ],
+  "levels": [
+    {
+      "id": "level-1",
+      "title": "All Cards",
+      "description": "Study all flashcards",
+      "questionIds": ["q1", "q2", "q3"],
+      "passingScore": 50
+    }
+  ],
+  "adaptiveRules": [],
+  "ui": { "emoji": "🃏", "showProgress": true, "showStreak": false }
+}
+
+CRITICAL RULES:
+1. "type" for every question MUST be exactly "flashcard" — never "true_false" or anything else
+2. "front" and "back" are REQUIRED — do NOT use "prompt", "options", or "answer"
+3. "levels" array is REQUIRED — every question id must appear in at least one level's "questionIds"
+4. "category" should reflect the subject area
 `
 
 // ── POST /api/ai/generate/quiz ────────────────────────────────────────────────
@@ -121,19 +301,21 @@ router.post("/generate/quiz", requireAuth, async (req, res) => {
   const company = targetCompany ? ` tailored for ${targetCompany} aptitude tests` : ""
   const tagStr  = tags?.length ? ` Focus areas: ${tags.join(", ")}.` : ""
 
+  const slug = topic.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
   const userPrompt = `Create a quiz game about "${topic}"${company}.
-- Exactly ${count} questions
-- Difficulty mix: mostly ${diff} (60%), some easier (20%) and harder (20%)
-- Include MCQ, true/false, and fill-blank types
-- Each question must have a clear, educational explanation
-- Generate a unique kebab-case id like "ai-${topic.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}"${tagStr}
-Return ONLY the JSON game config.`
+- Exactly ${count} questions total
+- Difficulty split: ~40% easy, ~40% medium, ~20% hard
+- ALL questions MUST use type "quiz" with 4 options and a numeric correctIndex (0, 1, 2, or 3)
+- Each question needs a thorough explanation of WHY the answer is correct
+- Split questions evenly across 3 levels (easy/medium/hard)
+- Use id: "ai-${slug}-${Date.now()}"${tagStr}
+- Return ONLY the raw JSON game config — no markdown, no explanation`
 
   try {
-    const config       = await callGeminiJSON(GAME_SCHEMA, userPrompt)
-    const tokensUsed   = Math.round(JSON.stringify(config).length / 4) // rough estimate
+    const rawConfig  = await callGeminiJSON(GAME_SCHEMA, userPrompt)
+    const config     = fixQuizConfig(rawConfig)        // ← validate + auto-fix format
+    const tokensUsed = Math.round(JSON.stringify(config).length / 4)
 
-    // Save to ai_generations table
     const gen = await prisma.aiGeneration.create({
       data: {
         userId:     req.user.id,
@@ -169,7 +351,8 @@ router.post("/generate/flashcard", requireAuth, async (req, res) => {
 Return ONLY the JSON game config.`
 
   try {
-    const config     = await callGeminiJSON(FLASHCARD_SCHEMA, userPrompt)
+    const rawConfig  = await callGeminiJSON(FLASHCARD_SCHEMA, userPrompt)
+    const config     = fixFlashcardConfig(rawConfig)   // ← validate + auto-fix format
     const tokensUsed = Math.round(JSON.stringify(config).length / 4)
 
     const gen = await prisma.aiGeneration.create({

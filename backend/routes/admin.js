@@ -269,3 +269,33 @@ router.get("/stats", requireAdmin, async (_req, res) => {
 })
 
 module.exports = router
+
+// ── POST /api/admin/games ─────────────────────────────────────────────────────
+// Admin publishes an AI-generated game to the global public library
+router.post("/games", requireAdmin, async (req, res) => {
+  try {
+    const { id, title, description, plugin, version, config, isAiGenerated, learningOutcomes, aptitudeTags } = req.body
+    if (!id || !title || !plugin || !config)
+      return res.status(400).json({ error: "id, title, plugin, config are required." })
+
+    const game = await prisma.game.create({
+      data: {
+        id,
+        title,
+        description:      description ?? "",
+        plugin,
+        version:          version ?? "1.0.0",
+        config,
+        visibility:       "public",
+        isAiGenerated:    isAiGenerated ?? true,
+        createdBy:        null,
+        learningOutcomes: learningOutcomes ?? [],
+        aptitudeTags:     aptitudeTags ?? [],
+      },
+    })
+    res.status(201).json({ success: true, game })
+  } catch (err) {
+    console.error("POST /api/admin/games error:", err)
+    res.status(500).json({ error: "Failed to publish game." })
+  }
+})
