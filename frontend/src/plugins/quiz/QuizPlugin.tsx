@@ -78,7 +78,7 @@ const QuizComponent: React.FC<PluginRenderProps<QuizQuestion>> = ({
       <div className="q-meta">
         <span className={`badge badge-${question.difficulty}`}>{question.difficulty}</span>
         <span className="pts-label">+{question.points} pts</span>
-        {stats.streak >= config.scoring.streakThreshold && config.scoring.streakMultiplier && (
+        {config.scoring && stats.streak >= config.scoring.streakThreshold && config.scoring.streakMultiplier && (
           <span className="streak-label">🔥 ×{config.scoring.streakMultiplierValue}</span>
         )}
         {showTimer && timeRemaining !== undefined && (
@@ -101,10 +101,10 @@ const QuizComponent: React.FC<PluginRenderProps<QuizQuestion>> = ({
         </div>
       )}
 
-      {/* Options */}
-      <div className="options-grid">
+      {/* Options — 2×2 grid for 4 options, single column otherwise */}
+      <div className={`options-grid${question.options.length === 4 ? " options-grid-2col" : ""}`}>
         {question.options.map((opt, i) => {
-          let cls = "option-btn"
+          let cls = "opt-btn"
           if (revealed) {
             if (i === question.correctIndex) cls += " correct"
             else if (i === selected)         cls += " wrong"
@@ -113,8 +113,8 @@ const QuizComponent: React.FC<PluginRenderProps<QuizQuestion>> = ({
           }
           return (
             <button key={i} className={cls} onClick={() => handleSelect(i)} disabled={revealed}>
-                <span className="opt-letter">{String.fromCharCode(65 + i)}</span>
-                <span className="opt-text">{opt}</span>
+              <span className="opt-letter">{String.fromCharCode(65 + i)}</span>
+              <span className="opt-text">{opt}</span>
             </button>
           )
         })}

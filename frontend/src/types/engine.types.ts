@@ -124,6 +124,8 @@ export interface ScoringConfig {
   streakMultiplier: boolean
   streakThreshold: number
   streakMultiplierValue: number
+  penalties?: boolean
+  penaltyPerWrong?: number
 }
 
 export interface GameConfig {

@@ -191,16 +191,32 @@ export const DeerMascot: React.FC<Props> = ({ state = "idle", size = 90, showLab
     }
   }, [state])
 
+  // Fills: idle has a subtle tint; reactions are nearly transparent so the
+  // mascot artwork is clearly visible (ring + glow carry the colour signal).
   const hexColors: Record<DeerState, string> = {
-    idle:    "rgba(0,212,255,0.25)",
-    happy:   "rgba(34,255,170,0.35)",
-    sad:     "rgba(255,45,120,0.25)",
-    victory: "rgba(255,215,0,0.35)",
+    idle:    "rgba(0,212,255,0.10)",
+    happy:   "rgba(34,255,170,0.05)",
+    sad:     "rgba(255,45,120,0.05)",
+    victory: "rgba(255,215,0,0.07)",
   }
 
   const hexBorders: Record<DeerState, string> = {
     idle: "#00D4FF", happy: "#22FFAA", sad: "#FF2D78", victory: "#FFD700",
   }
+
+  // For non-idle states, render an animated outer ring instead of a filled overlay.
+  const ringAnimStyle: React.CSSProperties | undefined =
+    currentState !== "idle"
+      ? {
+          position: "absolute",
+          inset: -6,
+          borderRadius: "50%",
+          border: `3px solid ${hexBorders[currentState]}`,
+          boxShadow: `0 0 16px ${hexBorders[currentState]}, 0 0 40px ${hexBorders[currentState]}80`,
+          animation: "ringPulse 0.5s ease-out",
+          pointerEvents: "none",
+        }
+      : undefined
 
   const labels: Record<DeerState, string> = {
     idle: "", happy: "CORRECT! ✓", sad: "WRONG ✗", victory: "WINNER! 🏆",
@@ -254,12 +270,20 @@ export const DeerMascot: React.FC<Props> = ({ state = "idle", size = 90, showLab
         }}
         title={onAIClick ? "Click to chat with Blackbuck AI" : undefined}
       >
+        {/* Ring flash — replaces the full-fill colour overlay on reactions */}
+        {ringAnimStyle && <div key={currentState} style={ringAnimStyle} />}
+
         <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} viewBox="0 0 110 110" xmlns="http://www.w3.org/2000/svg">
           <polygon points="55,5 100,30 100,80 55,105 10,80 10,30"
             fill={hexColors[currentState]}
             stroke={hexBorders[currentState]}
-            strokeWidth="2.5"
-            style={{ filter: `drop-shadow(0 0 8px ${hexBorders[currentState]})`, transition: "all 0.3s" }}
+            strokeWidth={currentState !== "idle" ? "3.5" : "2.5"}
+            style={{
+              filter: currentState !== "idle"
+                ? `drop-shadow(0 0 14px ${hexBorders[currentState]})`
+                : `drop-shadow(0 0 8px ${hexBorders[currentState]})`,
+              transition: "all 0.3s",
+            }}
           />
         </svg>
         <DeerSVG state={currentState} size={size} />

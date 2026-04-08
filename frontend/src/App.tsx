@@ -17,7 +17,11 @@ import { SignInOverlay }              from "./components/overlays/SignInOverlay"
 import { ProfileOverlay }             from "./components/overlays/ProfileOverlay"
 import { AdminAuthOverlay }           from "./components/overlays/AdminAuthOverlay"
 import { MultiplayerPage }            from "./pages/MultiplayerPage"
+import { SkillsDashboard }            from "./pages/SkillsDashboard"
+import { EngineShowcase }             from "./pages/EngineShowcase"
+import { useBoardMode }               from "./hooks/useBoardMode"
 import type { GameConfig }            from "./types/engine.types"
+import { getGameSkills, skillLabel, skillColor } from "./utils/GameSkillMapper"
 
 import logicGameRaw      from "./games/logic-game.json"
 import patternPuzzleRaw  from "./games/pattern-puzzle.json"
@@ -33,7 +37,7 @@ import "./styles.css"
 
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:3001/api"
 
-type Page    = "library" | "game" | "leaderboard" | "admin" | "multiplayer"
+type Page    = "library" | "game" | "leaderboard" | "admin" | "multiplayer" | "skills" | "engine"
 type Overlay = "about" | "docs" | "signin" | "profile" | "adminAuth" | null
 
 // Static fallback games (used until backend responds)
@@ -123,6 +127,7 @@ function AppInner() {
   useEffect(() => { loadGames() }, [loadGames])
 
   const { deerState, triggerCorrect, triggerWrong, triggerVictory } = useDeerMascot()
+  const { boardMode, toggleBoardMode, enterBoardMode } = useBoardMode()
 
   const allGames = useMemo(() => [...publicGames, ...myGames], [publicGames, myGames])
 
@@ -189,6 +194,40 @@ function AppInner() {
     }
   }, [token, loadGames])
 
+  // Admin: publish AI-generated game to the global library (visible to all users)
+  const handlePublishGame = useCallback(async (config: Record<string, unknown>) => {
+    if (!adminToken) { alert("Admin access required to publish games."); return }
+    try {
+      const uniqueId = `${config.id ?? "ai-game"}-${Date.now()}`
+      const res = await fetch(`${API}/admin/games`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}` },
+        body:    JSON.stringify({
+          id:               uniqueId,
+          title:            config.title,
+          description:      config.description ?? "",
+          plugin:           config.plugin,
+          version:          config.version ?? "1.0.0",
+          config:           { ...config, id: uniqueId },
+          isAiGenerated:    true,
+          visibility:       "public",
+          learningOutcomes: (config.learningOutcomes as string[]) ?? [],
+          aptitudeTags:     (config.aptitudeTags as string[]) ?? [],
+        }),
+      })
+      if (res.ok) {
+        await loadGames()
+        alert(`🌐 "${config.title}" published to All Games!`)
+        setAiOpen(false)
+      } else {
+        const d = await res.json()
+        alert(`Publish failed: ${d.error}`)
+      }
+    } catch {
+      alert("Publish failed. Please try again.")
+    }
+  }, [adminToken, loadGames])
+
   const ribbonProps = {
     onSearchGame:  setSearchQuery,
     onShowDocs:    () => openOverlay("docs"),
@@ -213,6 +252,8 @@ function AppInner() {
         isOpen={aiOpen}
         onClose={() => setAiOpen(false)}
         onGameGenerated={isLoggedIn ? handleGameGenerated : undefined}
+        onPublishGame={isAdmin ? handlePublishGame : undefined}
+        isAdmin={isAdmin}
       />
     </>
   )
@@ -224,19 +265,42 @@ function AppInner() {
   // ── Game page ──────────────────────────────────────────────────────────────
   if (page === "game" && activeGame) {
     return (
-      <div style={{ minHeight: "100vh" }}>
+      <div style={{ minHeight: "100vh" }} data-board={boardMode ? "true" : "false"}>
         <HexBackground />
-        <TopRibbon {...ribbonProps} />
-        <div className="app-shell" style={{ paddingTop: "20px" }}>
+        {!boardMode && <TopRibbon {...ribbonProps} />}
+        {/* Board Mode badge — visible during board mode */}
+        {boardMode && (
+          <div style={{
+            position: "fixed", top: 16, right: 16, zIndex: 9999,
+            display: "flex", alignItems: "center", gap: 10,
+          }}>
+            <div style={{
+              background: "rgba(0,212,255,0.15)", border: "1px solid rgba(0,212,255,0.4)",
+              borderRadius: 99, padding: "6px 18px",
+              color: "#00D4FF", fontFamily: "Orbitron, monospace",
+              fontSize: "0.7rem", fontWeight: 700, letterSpacing: 2,
+              display: "flex", alignItems: "center", gap: 8,
+            }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#00D4FF", display: "inline-block", animation: "pulse 1.5s infinite" }} />
+              BOARD MODE
+            </div>
+            <button onClick={toggleBoardMode} style={{
+              background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)",
+              borderRadius: 99, padding: "6px 14px", color: "rgba(255,255,255,0.5)",
+              cursor: "pointer", fontSize: "0.75rem",
+            }}>✕ Exit</button>
+          </div>
+        )}
+        <div className="app-shell" style={{ paddingTop: boardMode ? "0" : "20px" }}>
           <GameRenderer
             config={activeGame}
-            onBack={() => setPage("library")}
+            onBack={() => { if (boardMode) toggleBoardMode(); setPage("library") }}
             onCorrect={triggerCorrect}
             onWrong={triggerWrong}
             onVictory={triggerVictory}
           />
         </div>
-        <DeerMascot state={deerState} showLabel onAIClick={() => setAiOpen(true)} />
+        {!boardMode && <DeerMascot state={deerState} showLabel onAIClick={() => setAiOpen(true)} />}
         {overlays}
       </div>
     )
@@ -272,6 +336,35 @@ function AppInner() {
     )
   }
 
+  // ── Skills Dashboard page ──────────────────────────────────────────────────
+  if (page === "skills") {
+    return (
+      <div style={{ minHeight: "100vh" }}>
+        <HexBackground />
+        <TopRibbon {...ribbonProps} />
+        <div className="app-shell" style={{ paddingTop: "20px" }}>
+          <SkillsDashboard onBack={() => setPage("library")} />
+        </div>
+        <DeerMascot state="idle" size={80} onAIClick={() => setAiOpen(true)} />
+        {overlays}
+      </div>
+    )
+  }
+
+  // ── Engine Showcase page ───────────────────────────────────────────────────
+  if (page === "engine") {
+    return (
+      <div style={{ minHeight: "100vh" }}>
+        <HexBackground />
+        <TopRibbon {...ribbonProps} />
+        <div className="app-shell" style={{ paddingTop: "20px" }}>
+          <EngineShowcase games={allGames} onBack={() => setPage("library")} />
+        </div>
+        {overlays}
+      </div>
+    )
+  }
+
   // ── Admin page ─────────────────────────────────────────────────────────────
   if (page === "admin" && isAdmin) {
     return (
@@ -297,9 +390,30 @@ function AppInner() {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <HexBackground />
-      <TopRibbon {...ribbonProps} />
+      {!boardMode && <TopRibbon {...ribbonProps} />}
+      {/* Board mode top bar on library page */}
+      {boardMode && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, zIndex: 9999,
+          background: "rgba(0,12,30,0.95)", borderBottom: "1px solid rgba(0,212,255,0.3)",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "10px 24px",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#00D4FF", display: "inline-block", animation: "pulse 1.5s infinite" }} />
+            <span style={{ color: "#00D4FF", fontFamily: "Orbitron, monospace", fontSize: "0.72rem", fontWeight: 700, letterSpacing: 2 }}>
+              📺 DIGITAL BOARD MODE · LIBRARY
+            </span>
+          </div>
+          <button onClick={toggleBoardMode} style={{
+            background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.2)",
+            borderRadius: 99, padding: "6px 14px", color: "rgba(255,255,255,0.6)",
+            cursor: "pointer", fontSize: "0.75rem",
+          }}>✕ Exit Board Mode</button>
+        </div>
+      )}
 
-      <div className="app-shell" style={{ flex: 1, paddingTop: "24px" }}>
+      <div className="app-shell" style={{ flex: 1, paddingTop: boardMode ? "64px" : "24px" }}>
         <header className="app-header animate-in" style={{ marginBottom: "28px" }}>
           <div className="app-logo-mark">
             <AppLogoImg />
@@ -325,10 +439,48 @@ function AppInner() {
           </p>
         </header>
 
+        {/* ── Digital Board banner — visible hint for judges on smartboards ── */}
+        <div style={{
+          background: "linear-gradient(135deg, rgba(0,212,255,0.08), rgba(168,85,247,0.08))",
+          border: "1px solid rgba(0,212,255,0.2)",
+          borderRadius: 14, padding: "12px 20px",
+          marginBottom: 16,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          flexWrap: "wrap", gap: 10,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: "1.3rem" }}>📺</span>
+            <div>
+              <div style={{ color: "#00D4FF", fontFamily: "Orbitron, monospace", fontSize: "0.72rem", fontWeight: 700, letterSpacing: 1 }}>
+                DIGITAL BOARD READY
+              </div>
+              <div style={{ color: "rgba(255,255,255,0.45)", fontSize: "0.72rem", marginTop: 2 }}>
+                Click the <strong style={{ color: "#00D4FF" }}>📺</strong> icon on any game card to launch fullscreen board mode
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => enterBoardMode()}
+            style={{
+              background: boardMode ? "rgba(0,212,255,0.25)" : "rgba(0,212,255,0.15)",
+              border: `1px solid rgba(0,212,255,${boardMode ? "0.7" : "0.35"})`,
+              borderRadius: 99, padding: "8px 20px", cursor: "pointer",
+              color: "#00D4FF", fontFamily: "Orbitron, monospace",
+              fontSize: "0.68rem", fontWeight: 700, letterSpacing: 1, whiteSpace: "nowrap",
+            }}
+          >
+            {boardMode ? "📺 Board Active · Esc to Exit" : "📺 Enable Board Mode →"}
+          </button>
+        </div>
+
         <nav className="app-nav animate-in stagger-1">
           <button className="nav-btn nav-btn-active">🎮 Games</button>
           <button className="nav-btn" onClick={() => setPage("multiplayer")}>🌐 Multiplayer</button>
           <button className="nav-btn" onClick={() => setPage("leaderboard")}>🏆 Leaderboard</button>
+          {isLoggedIn && (
+            <button className="nav-btn" onClick={() => setPage("skills")}>📊 My Skills</button>
+          )}
+          <button className="nav-btn" onClick={() => setPage("engine")}>⚙️ Engine</button>
           {isLoggedIn && (
             <button className="nav-btn" onClick={() => setAiOpen(true)}>
               🤖 AI Studio
@@ -390,6 +542,7 @@ function AppInner() {
             <GameGrid
               games={filteredMy}
               onPlay={game => { setActiveGame(game); setPage("game") }}
+              onBoardPlay={game => { setActiveGame(game); enterBoardMode(); setPage("game") }}
               showPrivateBadge
             />
           </section>
@@ -446,6 +599,7 @@ function AppInner() {
           <GameGrid
             games={filteredPublic}
             onPlay={game => { setActiveGame(game); setPage("game") }}
+            onBoardPlay={game => { setActiveGame(game); enterBoardMode(); setPage("game") }}
             searchQuery={searchQuery}
           />
         </section>
@@ -467,10 +621,11 @@ function AppInner() {
 // ── GameGrid sub-component ────────────────────────────────────────────────────
 
 function GameGrid({
-  games, onPlay, searchQuery, showPrivateBadge,
+  games, onPlay, onBoardPlay, searchQuery, showPrivateBadge,
 }: {
   games:            GameConfig[]
   onPlay:           (g: GameConfig) => void
+  onBoardPlay?:     (g: GameConfig) => void
   searchQuery?:     string
   showPrivateBadge?: boolean
 }) {
@@ -532,31 +687,55 @@ function GameGrid({
           <h2 className="card-title">{game.title}</h2>
           <p className="card-desc">{game.description}</p>
 
-          {/* Aptitude tags */}
-          {game.aptitudeTags && game.aptitudeTags.length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "8px" }}>
-              {game.aptitudeTags.slice(0, 3).map(tag => (
-                <span key={tag} style={{
-                  background: "rgba(255,215,0,0.1)", border: "1px solid rgba(255,215,0,0.25)",
-                  borderRadius: "4px", padding: "1px 6px",
-                  color: "#FFD700", fontSize: "0.62rem",
-                  fontFamily: "Exo 2, sans-serif",
-                }}>
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
+          {/* Auto-derived skill tags */}
+          {(() => {
+            const skills = getGameSkills(game)
+            if (!skills.length) return null
+            return (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "8px" }}>
+                {skills.map(sk => {
+                  const col = skillColor(sk)
+                  return (
+                    <span key={sk} style={{
+                      background: `${col}18`,
+                      border: `1px solid ${col}44`,
+                      borderRadius: "4px", padding: "2px 7px",
+                      color: col, fontSize: "0.6rem",
+                      fontFamily: "Exo 2, sans-serif", fontWeight: 600,
+                      letterSpacing: "0.03em",
+                    }}>
+                      {skillLabel(sk)}
+                    </span>
+                  )
+                })}
+              </div>
+            )
+          })()}
 
           <div className="card-footer">
             <div className="card-meta">
               <span>📚 {(game.levels ?? []).length} levels</span>
               <span>❓ {(game.questions ?? []).length} questions</span>
             </div>
-            <button className="btn-play"
-              onClick={e => { e.stopPropagation(); onPlay(game) }}>
-              Play →
-            </button>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              {onBoardPlay && (
+                <button
+                  title="Launch in Board Mode (fullscreen for smartboards)"
+                  onClick={e => { e.stopPropagation(); onBoardPlay(game) }}
+                  style={{
+                    background: "rgba(0,212,255,0.1)", border: "1px solid rgba(0,212,255,0.25)",
+                    borderRadius: 8, padding: "6px 10px", cursor: "pointer",
+                    color: "#00D4FF", fontSize: "0.75rem", fontWeight: 700,
+                    fontFamily: "Orbitron, monospace", letterSpacing: 1,
+                  }}>
+                  📺
+                </button>
+              )}
+              <button className="btn-play"
+                onClick={e => { e.stopPropagation(); onPlay(game) }}>
+                Play →
+              </button>
+            </div>
           </div>
         </div>
       ))}
