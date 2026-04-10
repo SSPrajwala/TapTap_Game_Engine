@@ -111,7 +111,7 @@ app.get("/api/health", (_req, res) =>
     status:     "ok",
     engine:     "TapTap Backend v3.0",
     database:   "Supabase PostgreSQL (Prisma)",
-    ai:         "Gemini 1.5 Flash",
+    ai:         "Groq llama-3.3-70b",
     multiplayer: true,
     timestamp:  Date.now(),
   })
