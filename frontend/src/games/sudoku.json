@@ -1,10 +1,9 @@
 {
   "id": "sudoku-v1",
   "title": "Sudoku Challenge",
-  "description": "Fill the 9×9 grid so every row, column, and 3×3 box contains digits 1–9.",
+  "description": "Fill the 9\u00d79 grid so every row, column, and 3\u00d73 box contains digits 1\u20139.",
   "plugin": "sudoku",
   "version": "1.0.0",
-
   "questions": [
     {
       "id": "sdk-easy-1",
@@ -12,9 +11,9 @@
       "difficulty": "easy",
       "points": 300,
       "timeLimit": 300,
-      "instruction": "Fill the grid — every row, column and 3×3 box must contain 1–9.",
+      "instruction": "Fill the grid \u2014 every row, column and 3\u00d73 box must contain 1\u20139.",
       "hint": "Start with rows or columns that already have 7+ numbers filled in.",
-      "board":    "530070000600195000098000060800060003400803001700020006060000280000419005000080079",
+      "board": "530070000600195000098000060800060003400803001700020006060000280000419005000080079",
       "solution": "534678912672195348198342567859761423426853791713924856961537284287419635345286179"
     },
     {
@@ -23,9 +22,9 @@
       "difficulty": "easy",
       "points": 300,
       "timeLimit": 300,
-      "instruction": "Classic Sudoku — use logic to fill every cell.",
+      "instruction": "Classic Sudoku \u2014 use logic to fill every cell.",
       "hint": "Look for cells where only one digit fits given the row, column and box constraints.",
-      "board":    "003020600900305001001806400008102900700000008006708200002609500800203009005010300",
+      "board": "003020600900305001001806400008102900700000008006708200002609500800203009005010300",
       "solution": "483921657967345821251876493548132976729564138136798245372689514814253769695417382"
     },
     {
@@ -34,9 +33,9 @@
       "difficulty": "medium",
       "points": 500,
       "timeLimit": 420,
-      "instruction": "Medium difficulty — fewer given numbers.",
+      "instruction": "Medium difficulty \u2014 fewer given numbers.",
       "hint": "Try the elimination technique: for each empty cell, list which digits are impossible.",
-      "board":    "200080300060070084030500209000105408000000000402706000301007040720040060004010003",
+      "board": "200080300060070084030500209000105408000000000402706000301007040720040060004010003",
       "solution": "245981376169273584837564219976125438513498627482736951391657842728349165654812793"
     },
     {
@@ -45,9 +44,9 @@
       "difficulty": "medium",
       "points": 500,
       "timeLimit": 420,
-      "instruction": "Medium Sudoku — patience and logic required.",
-      "hint": "Focus on the 3×3 boxes that have the most numbers filled already.",
-      "board":    "000000907000420180000705026100904000050000040000507009920108000034059000507000000",
+      "instruction": "Medium Sudoku \u2014 patience and logic required.",
+      "hint": "Focus on the 3\u00d73 boxes that have the most numbers filled already.",
+      "board": "000000907000420180000705026100904000050000040000507009920108000034059000507000000",
       "solution": "162348957795426183483715926138964275659231748274587319926178534347659812517892641"
     },
     {
@@ -56,50 +55,76 @@
       "difficulty": "hard",
       "points": 800,
       "timeLimit": 600,
-      "instruction": "Hard Sudoku — requires advanced techniques.",
+      "instruction": "Hard Sudoku \u2014 requires advanced techniques.",
       "hint": "Try naked pairs: if two cells in a row can only have the same two digits, those digits are eliminated from the rest of the row.",
-      "board":    "800000000003600000070090200060005300040003007000800060600008040000020000000700090",
+      "board": "800000000003600000070090200060005300040003007000800060600008040000020000000700090",
       "solution": "812753649943682175675491238168945327294137586357826961521368794486279013739514852"
     }
   ],
-
   "levels": [
     {
       "id": "sdk-l1",
       "title": "Easy Sudoku",
       "description": "Two easy puzzles to get started.",
-      "questionIds": ["sdk-easy-1", "sdk-easy-2"],
+      "questionIds": [
+        "sdk-easy-1",
+        "sdk-easy-2"
+      ],
       "passingScore": 40
     },
     {
       "id": "sdk-l2",
       "title": "Medium Sudoku",
-      "description": "Fewer clues — more thinking required.",
-      "questionIds": ["sdk-medium-1", "sdk-medium-2"],
+      "description": "Fewer clues \u2014 more thinking required.",
+      "questionIds": [
+        "sdk-medium-1",
+        "sdk-medium-2"
+      ],
       "passingScore": 40,
-      "unlockCondition": { "previousLevelId": "sdk-l1", "minScore": 30 }
+      "unlockCondition": {
+        "previousLevelId": "sdk-l1",
+        "minScore": 30
+      }
     },
     {
       "id": "sdk-l3",
       "title": "Hard Sudoku",
       "description": "Only for the sharpest logical minds.",
-      "questionIds": ["sdk-hard-1"],
+      "questionIds": [
+        "sdk-hard-1"
+      ],
       "passingScore": 50,
-      "unlockCondition": { "previousLevelId": "sdk-l2", "minScore": 40 }
+      "unlockCondition": {
+        "previousLevelId": "sdk-l2",
+        "minScore": 40
+      }
     }
   ],
-
   "adaptiveRules": [
     {
-      "condition": { "metric": "accuracy", "operator": ">=", "value": 1.0 },
-      "action": { "type": "adjustDifficulty", "payload": { "difficulty": "hard" } }
+      "condition": {
+        "metric": "accuracy",
+        "operator": ">=",
+        "value": 1.0
+      },
+      "action": {
+        "type": "adjustDifficulty",
+        "payload": {
+          "difficulty": "hard"
+        }
+      }
     },
     {
-      "condition": { "metric": "accuracy", "operator": "<", "value": 0.5 },
-      "action": { "type": "showHint" }
+      "condition": {
+        "metric": "accuracy",
+        "operator": "<",
+        "value": 0.5
+      },
+      "action": {
+        "type": "showHint"
+      }
     }
   ],
-
   "scoring": {
     "basePoints": 300,
     "timeBonus": true,
@@ -108,11 +133,20 @@
     "streakThreshold": 3,
     "streakMultiplierValue": 1.0
   },
-
   "ui": {
     "showTimer": true,
     "showProgress": true,
     "showStreak": false,
-    "emoji": "🔢"
-  }
+    "emoji": "\ud83d\udd22"
+  },
+  "learningOutcomes": [
+    "numerical_ability",
+    "logical_reasoning",
+    "focus"
+  ],
+  "aptitudeTags": [
+    "numerical_ability",
+    "logical_reasoning",
+    "focus"
+  ]
 }

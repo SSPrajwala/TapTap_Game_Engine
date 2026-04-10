@@ -10,8 +10,10 @@ import { GameRenderer }                from "../components/GameRenderer"
 import type { GameConfig }             from "../types/engine.types"
 
 interface Props {
-  games:  GameConfig[]
-  onBack: () => void
+  games:           GameConfig[]
+  onBack:          () => void
+  /** When set, skip idle screen and auto-restore into this room (from Live Room redirect) */
+  pendingRoomCode?: string
 }
 
 // ── Small reusable components ─────────────────────────────────────────────────
@@ -446,31 +448,81 @@ const LiveLeaderboard: React.FC<{
 
 const GameOverScreen: React.FC<{
   leaderboard: import("../hooks/useMultiplayerRoom").LeaderboardRow[]
-  myName: string
+  myName:      string
+  gameTitle:   string
   onPlayAgain: () => void
-  onLeave: () => void
-}> = ({ leaderboard, myName, onPlayAgain, onLeave }) => {
-  const myRank = leaderboard.find(p => p.name === myName)
+  onLeave:     () => void
+}> = ({ leaderboard, myName, gameTitle, onPlayAgain, onLeave }) => {
+  const myRank  = leaderboard.find(p => p.name === myName)
+  const winner  = leaderboard[0]
+  const iWon    = myRank?.rank === 1
+  const [shared, setShared] = useState(false)
+
+  const handleShareAchievement = async () => {
+    if (!myRank) return
+    const url = window.location.origin
+    const rankStr = myRank.rank === 1 ? "🥇 1st" : myRank.rank === 2 ? "🥈 2nd" : myRank.rank === 3 ? "🥉 3rd" : `#${myRank.rank}`
+    const text = iWon
+      ? `🏆 I WON the Live Room battle on "${gameTitle}"!\n🥇 ${myRank.score} pts · ${myRank.accuracy}% accuracy · ${myRank.correct}/${myRank.answers} correct\n\nCan you beat me? Play TapTap Game Engine 👉 ${url}`
+      : `🎮 I finished ${rankStr} in the Live Room battle on "${gameTitle}"!\n📊 ${myRank.score} pts · ${myRank.accuracy}% accuracy\nWinner: ${winner?.name} with ${winner?.score} pts 🏆\n\nCome play! 👉 ${url}`
+    try {
+      if (navigator.share) await navigator.share({ title: "TapTap Live Room Result", text, url })
+      else {
+        await navigator.clipboard.writeText(text)
+        setShared(true)
+        setTimeout(() => setShared(false), 3000)
+      }
+    } catch { /* user dismissed */ }
+  }
 
   return (
-    <div style={{ maxWidth: "540px", margin: "0 auto", paddingTop: "40px" }}>
-      <GlassCard>
-        <div style={{ textAlign: "center", marginBottom: "24px" }}>
-          <div style={{ fontSize: "2.5rem" }}>
-            {myRank?.rank === 1 ? "🏆" : myRank?.rank === 2 ? "🥈" : myRank?.rank === 3 ? "🥉" : "🎮"}
+    <div style={{ maxWidth: "580px", margin: "0 auto", paddingTop: "20px" }}>
+
+      {/* Winner celebration banner */}
+      {winner && (
+        <div style={{
+          borderRadius: "18px", padding: "22px 28px", marginBottom: "16px", textAlign: "center",
+          background: "linear-gradient(135deg, rgba(255,215,0,0.12) 0%, rgba(168,85,247,0.12) 100%)",
+          border: "1px solid rgba(255,215,0,0.3)",
+          position: "relative", overflow: "hidden",
+        }}>
+          {/* Shimmer overlay */}
+          <div style={{
+            position: "absolute", inset: 0, opacity: 0.06,
+            background: "repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,215,0,0.5) 10px, rgba(255,215,0,0.5) 20px)",
+            pointerEvents: "none",
+          }} />
+          <div style={{ fontSize: "3rem", marginBottom: "6px" }}>
+            {iWon ? "🏆" : "🎉"}
           </div>
-          <h2 style={{ fontFamily: "Orbitron, monospace", color: "#A855F7", margin: "8px 0 4px" }}>
-            Game Over!
-          </h2>
-          {myRank && (
-            <p style={{ color: "rgba(232,224,255,0.5)", fontSize: "0.84rem" }}>
-              You finished #{myRank.rank} with {myRank.score} points
-            </p>
+          <div style={{ fontFamily: "Orbitron, monospace", fontSize: "1.1rem", fontWeight: 900, letterSpacing: "0.08em", color: "#FFD700", marginBottom: "4px" }}>
+            {iWon ? "YOU WON!" : `${winner.name} WINS!`}
+          </div>
+          <div style={{ fontFamily: "Exo 2, sans-serif", fontSize: "0.82rem", color: "rgba(232,224,255,0.55)" }}>
+            {iWon
+              ? `Top score: ${winner.score} pts · ${winner.accuracy}% accuracy 🔥`
+              : `Winner scored ${winner.score} pts with ${winner.accuracy}% accuracy`}
+          </div>
+          {myRank && !iWon && (
+            <div style={{ marginTop: "10px", fontFamily: "Exo 2, sans-serif", fontSize: "0.75rem", color: "rgba(232,224,255,0.4)" }}>
+              Your result: #{myRank.rank} · {myRank.score} pts · {myRank.accuracy}% accuracy
+            </div>
           )}
+        </div>
+      )}
+
+      <GlassCard>
+        <div style={{ textAlign: "center", marginBottom: "20px" }}>
+          <h2 style={{ fontFamily: "Orbitron, monospace", color: "#A855F7", margin: "0 0 4px" }}>
+            Final Leaderboard
+          </h2>
+          <p style={{ color: "rgba(232,224,255,0.35)", fontSize: "0.75rem", margin: 0, fontFamily: "Exo 2, sans-serif" }}>
+            {gameTitle}
+          </p>
         </div>
 
         {/* Final leaderboard */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "24px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "22px" }}>
           {leaderboard.map(p => (
             <div key={p.name} style={{
               display: "flex", justifyContent: "space-between", alignItems: "center",
@@ -478,32 +530,55 @@ const GameOverScreen: React.FC<{
               background: p.name === myName
                 ? "rgba(168,85,247,0.15)"
                 : p.rank === 1 ? "rgba(255,215,0,0.08)" : "rgba(255,255,255,0.03)",
-              border: p.name === myName ? "1px solid rgba(168,85,247,0.4)" : "1px solid transparent",
+              border: p.rank === 1
+                ? "1px solid rgba(255,215,0,0.3)"
+                : p.name === myName ? "1px solid rgba(168,85,247,0.4)" : "1px solid rgba(255,255,255,0.05)",
+              transition: "all 0.2s",
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <span style={{ fontFamily: "Orbitron, monospace", fontSize: "1rem" }}>
                   {p.rank === 1 ? "🥇" : p.rank === 2 ? "🥈" : p.rank === 3 ? "🥉" : `#${p.rank}`}
                 </span>
-                <span style={{ color: "#E8E0FF", fontSize: "0.88rem" }}>{p.name}</span>
+                <span style={{
+                  color: p.rank === 1 ? "#FFD700" : p.name === myName ? "#C084FC" : "#E8E0FF",
+                  fontSize: "0.88rem", fontWeight: p.rank <= 3 ? 700 : 400,
+                }}>
+                  {p.name} {p.name === myName && <span style={{ fontSize: "0.62rem", opacity: 0.6 }}>(you)</span>}
+                </span>
               </div>
               <div style={{ textAlign: "right" }}>
-                <div style={{ fontFamily: "Orbitron, monospace", color: "#A855F7", fontSize: "0.95rem" }}>
-                  {p.score}
+                <div style={{ fontFamily: "Orbitron, monospace", color: p.rank === 1 ? "#FFD700" : "#A855F7", fontSize: "0.95rem" }}>
+                  {p.score.toLocaleString()}
                 </div>
-                <div style={{ fontSize: "0.68rem", color: "rgba(232,224,255,0.35)" }}>
-                  {p.correct}/{p.answers} correct · {p.accuracy}%
+                <div style={{ fontSize: "0.65rem", color: "rgba(232,224,255,0.35)" }}>
+                  {p.correct}/{p.answers} · {p.accuracy}%
                 </div>
               </div>
             </div>
           ))}
         </div>
 
-        <div style={{ display: "flex", gap: "12px" }}>
-          <PrimaryBtn onClick={onPlayAgain} color="#22FFAA">Play Again</PrimaryBtn>
-          <button onClick={onLeave} style={{ background: "transparent",
-            border: "1px solid rgba(168,85,247,0.3)", borderRadius: "10px",
-            color: "rgba(232,224,255,0.5)", cursor: "pointer",
-            fontSize: "0.82rem", padding: "10px 20px" }}>
+        {/* Action buttons */}
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          {myRank && (
+            <button onClick={handleShareAchievement} style={{
+              flex: 1, padding: "10px 16px", borderRadius: "10px", cursor: "pointer",
+              background: shared ? "rgba(34,255,170,0.15)" : "rgba(168,85,247,0.12)",
+              border: shared ? "1px solid rgba(34,255,170,0.4)" : "1px solid rgba(168,85,247,0.3)",
+              color: shared ? "#22FFAA" : "#C084FC",
+              fontFamily: "Exo 2, sans-serif", fontWeight: 700, fontSize: "0.82rem",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+              transition: "all 0.2s", whiteSpace: "nowrap",
+            }}>
+              {shared ? "✅ Copied!" : "📤 Share Result"}
+            </button>
+          )}
+          <PrimaryBtn onClick={onPlayAgain} color="#22FFAA">🔄 Play Again</PrimaryBtn>
+          <button onClick={onLeave} style={{
+            background: "transparent", border: "1px solid rgba(168,85,247,0.25)",
+            borderRadius: "10px", color: "rgba(232,224,255,0.5)", cursor: "pointer",
+            fontSize: "0.82rem", padding: "10px 18px",
+          }}>
             Leave
           </button>
         </div>
@@ -514,8 +589,16 @@ const GameOverScreen: React.FC<{
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-export const MultiplayerPage: React.FC<Props> = ({ games, onBack }) => {
+export const MultiplayerPage: React.FC<Props> = ({ games, onBack, pendingRoomCode }) => {
   const mp = useMultiplayerRoom()
+
+  // Auto-restore into a room when redirected here from the Live Room lobby
+  useEffect(() => {
+    if (pendingRoomCode) {
+      mp.restoreRoom(pendingRoomCode)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingRoomCode])
 
   // Track player name for leaderboard highlighting
   const [myName, setMyName] = useState("")
@@ -563,6 +646,7 @@ export const MultiplayerPage: React.FC<Props> = ({ games, onBack }) => {
       <GameOverScreen
         leaderboard={mp.leaderboard}
         myName={myName}
+        gameTitle={mp.room?.gameTitle ?? "Live Game"}
         onPlayAgain={() => {
           // Reset to lobby phase — user needs to start a new game
           mp.leaveRoom()

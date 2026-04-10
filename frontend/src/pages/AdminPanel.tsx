@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react"
 import type {
   GameConfig, Question,
   QuizQuestion, FlashcardQuestion, MemoryQuestion, WordBuilderQuestion,
+  PuzzleQuestion, TapBlitzQuestion, BinaryRunnerQuestion,
 } from "../types/engine.types"
 
 const ADMIN_API = (import.meta.env.VITE_API_URL ?? "http://localhost:3001/api") + "/admin"
@@ -16,6 +17,18 @@ interface Props {
 
 type AdminTab  = "questions" | "levels" | "settings"
 type SaveStatus = "idle" | "saving" | "saved" | "error"
+
+// Plugin metadata for the Create Game flow
+const PLUGIN_META: Record<string, { emoji: string; label: string; desc: string; color: string }> = {
+  quiz:        { emoji: "❓", label: "Quiz",          desc: "Multiple-choice questions with hints & explanations",  color: "#A855F7" },
+  puzzle:      { emoji: "🔢", label: "Pattern Puzzle", desc: "Number-sequence / pattern-recognition questions",      color: "#00D4FF" },
+  flashcard:   { emoji: "🃏", label: "Flashcard",      desc: "Flip-card front/back learning decks",                 color: "#FF2D78" },
+  memory:      { emoji: "🧩", label: "Memory Match",   desc: "Emoji pair-matching concentration game",              color: "#22FFAA" },
+  wordbuilder: { emoji: "📝", label: "Word Builder",   desc: "Build words from shuffled letter tiles",              color: "#EC4899" },
+  tapblitz:    { emoji: "⚡", label: "TapBlitz",       desc: "Motion aim game — configure wave speed & spawn rate", color: "#FFD700" },
+  binaryrunner:{ emoji: "🚀", label: "Binary Runner",  desc: "3-lane runner — configure logic gate operations",     color: "#00D4FF" },
+  sudoku:      { emoji: "🔢", label: "Sudoku",         desc: "9×9 constraint-satisfaction grid puzzle",            color: "#FFD700" },
+}
 
 // ── Shared input components ───────────────────────────────────────────────────
 
@@ -52,6 +65,42 @@ function blankWordBuilder(): Partial<WordBuilderQuestion> {
   return { id: `wb-${crypto.randomUUID()}`, type: "wordbuilder", difficulty: "easy", points: 300,
            letters: [], validWords: [], targetCount: 3,
            instruction: "Build as many words as you can from these letters!", bonusWords: [] }
+}
+
+function blankPuzzle(): Partial<PuzzleQuestion> {
+  return { id: `p-${crypto.randomUUID()}`, type: "puzzle", difficulty: "easy", points: 100,
+           pattern: [2, 4, 6, 8], sequenceLength: 2,
+           instruction: "What are the next 2 numbers?", hint: "Add 2 each time." }
+}
+
+function blankTapBlitz(): Partial<TapBlitzQuestion> {
+  return { id: `tb-${crypto.randomUUID()}`, type: "tapblitz", difficulty: "easy", points: 500,
+           instruction: "Click the targets!", duration: 30, spawnRate: 1.2,
+           targetLifetime: 3.5, targetSpeed: 55, targetMinRadius: 28, targetMaxRadius: 44, maxMisses: 12 }
+}
+
+function blankBinaryRunner(): Partial<BinaryRunnerQuestion> {
+  return { id: `br-${crypto.randomUUID()}`, type: "binaryrunner", difficulty: "easy", points: 600,
+           instruction: "Stage 1 — Steer into the correct answer lane!",
+           duration: 40, initialSpeed: 55, maxSpeed: 110, speedRampPerSec: 1.2,
+           spawnInterval: 3.2, operations: ["AND", "OR"] }
+}
+
+// ── New blank game template builder ──────────────────────────────────────────
+
+function buildBlankGame(plugin: string, title: string, description: string, emoji: string): GameConfig {
+  const id = `admin-${plugin}-${Date.now()}`
+  const base = {
+    id, title, description, plugin, version: "1.0.0",
+    questions: [], levels: [{ id: "level-1", title: "Level 1", description: "All questions", questionIds: [], passingScore: 60 }],
+    adaptiveRules: [
+      { condition: { metric: "accuracy" as const, operator: "<" as const, value: 0.4 }, action: { type: "adjustDifficulty" as const, payload: { difficulty: "easy" } } },
+      { condition: { metric: "accuracy" as const, operator: ">" as const, value: 0.8 }, action: { type: "adjustDifficulty" as const, payload: { difficulty: "hard" } } },
+    ],
+    scoring: { basePoints: 100, timeBonus: false, timeBonusPerSecond: 0, streakMultiplier: true, streakThreshold: 3, streakMultiplierValue: 1.5 },
+    ui: { emoji: emoji || (PLUGIN_META[plugin]?.emoji ?? "🎮"), showProgress: true, showStreak: true, showTimer: plugin === "tapblitz" || plugin === "binaryrunner" },
+  }
+  return base as GameConfig
 }
 
 // ── Validation helpers ────────────────────────────────────────────────────────
@@ -95,6 +144,31 @@ function validateWordBuilder(q: Partial<WordBuilderQuestion>): string {
   return ""
 }
 
+function validatePuzzle(q: Partial<PuzzleQuestion>): string {
+  if (!q.instruction?.trim())       return "Instruction is required."
+  if (!q.pattern?.length)           return "Pattern (number sequence) is required."
+  if (!q.sequenceLength || q.sequenceLength < 1) return "Sequence length must be at least 1."
+  if (!q.hint?.trim())              return "Hint is required — explain the pattern rule."
+  if (!q.points || q.points < 1)   return "Points must be at least 1."
+  return ""
+}
+
+function validateTapBlitz(q: Partial<TapBlitzQuestion>): string {
+  if (!q.instruction?.trim())             return "Wave instruction is required."
+  if (!q.duration || q.duration < 5)      return "Duration must be at least 5 seconds."
+  if (!q.spawnRate || q.spawnRate <= 0)   return "Spawn rate must be > 0."
+  if (!q.targetLifetime || q.targetLifetime <= 0) return "Target lifetime must be > 0."
+  if (!q.targetSpeed || q.targetSpeed <= 0) return "Target speed must be > 0."
+  return ""
+}
+
+function validateBinaryRunner(q: Partial<BinaryRunnerQuestion>): string {
+  if (!q.instruction?.trim())           return "Stage instruction is required."
+  if (!q.duration || q.duration < 5)    return "Duration must be at least 5 seconds."
+  if (!q.operations?.length)            return "At least one operation (AND, OR, etc.) is required."
+  return ""
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export const AdminPanel: React.FC<Props> = ({ games, onBack, onSave, adminToken, adminName }) => {
@@ -113,9 +187,27 @@ export const AdminPanel: React.FC<Props> = ({ games, onBack, onSave, adminToken,
   const [flashForm, setFlashForm]         = useState<Partial<FlashcardQuestion>>(blankFlashcard)
   const [memForm, setMemForm]             = useState<Partial<MemoryQuestion>>(blankMemory)
   const [wbForm, setWbForm]               = useState<Partial<WordBuilderQuestion>>(blankWordBuilder)
+  const [puzzleForm, setPuzzleForm]       = useState<Partial<PuzzleQuestion>>(blankPuzzle)
+  const [tbForm, setTbForm]               = useState<Partial<TapBlitzQuestion>>(blankTapBlitz)
+  const [brForm, setBrForm]               = useState<Partial<BinaryRunnerQuestion>>(blankBinaryRunner)
   const [wbLettersRaw, setWbLettersRaw]   = useState("")
   const [wbWordsRaw,   setWbWordsRaw]     = useState("")
   const [wbBonusRaw,   setWbBonusRaw]     = useState("")
+  const [puzzlePatternRaw, setPuzzlePatternRaw] = useState("2,4,6,8")
+
+  // ── Create game modal state ───────────────────────────────────────────────
+  const [showCreateGame, setShowCreateGame]   = useState(false)
+  const [createPlugin,   setCreatePlugin]     = useState("quiz")
+  const [createTitle,    setCreateTitle]      = useState("")
+  const [createDesc,     setCreateDesc]       = useState("")
+  const [createEmoji,    setCreateEmoji]      = useState("")
+  const [createLO,       setCreateLO]         = useState("") // learning outcomes
+  const [createLoading,  setCreateLoading]    = useState(false)
+  const [createError,    setCreateError]      = useState("")
+
+  // ── Delete game state ─────────────────────────────────────────────────────
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteLoading,     setDeleteLoading]     = useState(false)
 
   // Keep letters/words raw strings in sync with form
   useEffect(() => {
@@ -124,11 +216,81 @@ export const AdminPanel: React.FC<Props> = ({ games, onBack, onSave, adminToken,
     setWbBonusRaw(wbForm.bonusWords?.join(", ") ?? "")
   }, [wbForm.letters, wbForm.validWords, wbForm.bonusWords])
 
+  useEffect(() => {
+    setPuzzlePatternRaw(puzzleForm.pattern?.join(",") ?? "")
+  }, [puzzleForm.pattern])
+
   const resetForm = () => {
     setQuizForm(blankQuiz()); setFlashForm(blankFlashcard())
     setMemForm(blankMemory()); setWbForm(blankWordBuilder())
+    setPuzzleForm(blankPuzzle()); setTbForm(blankTapBlitz()); setBrForm(blankBinaryRunner())
     setWbLettersRaw(""); setWbWordsRaw(""); setWbBonusRaw("")
+    setPuzzlePatternRaw("2,4,6,8")
     setEditingQId(null); setQError("")
+  }
+
+  // ── Create new game ───────────────────────────────────────────────────────
+  const handleCreateGame = async () => {
+    if (!createTitle.trim()) { setCreateError("Title is required."); return }
+    setCreateLoading(true)
+    setCreateError("")
+    try {
+      const newGame = buildBlankGame(createPlugin, createTitle.trim(), createDesc.trim(), createEmoji.trim())
+      const learningOutcomes = createLO.split(",").map(s => s.trim()).filter(Boolean)
+      const res = await fetch(`${ADMIN_API}/games`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${adminToken}` },
+        body: JSON.stringify({ ...newGame, config: newGame, isAiGenerated: false, visibility: "public", learningOutcomes, aptitudeTags: [] }),
+      })
+      if (!res.ok) {
+        const d = await res.json()
+        throw new Error(d.error ?? `HTTP ${res.status}`)
+      }
+      const newGames = [...localGames, newGame]
+      setLocalGames(newGames)
+      onSave(newGames)
+      setSelectedGameId(newGame.id)
+      setShowCreateGame(false)
+      setCreateTitle(""); setCreateDesc(""); setCreateEmoji(""); setCreateLO(""); setCreatePlugin("quiz")
+      setSaveMsg(`✅ "${newGame.title}" created! Now add questions in the Questions tab.`)
+      setSaveStatus("saved")
+      setTimeout(() => { setSaveStatus("idle"); setSaveMsg("") }, 4000)
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : "Create failed.")
+    } finally {
+      setCreateLoading(false)
+    }
+  }
+
+  // ── Delete current game ───────────────────────────────────────────────────
+  const handleDeleteGame = async () => {
+    if (!game) return
+    setDeleteLoading(true)
+    try {
+      const res = await fetch(`${ADMIN_API}/games/${encodeURIComponent(game.id)}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${adminToken}` },
+      })
+      if (!res.ok) {
+        const d = await res.json()
+        throw new Error(d.error ?? `HTTP ${res.status}`)
+      }
+      const remaining = localGames.filter(g => g.id !== game.id)
+      setLocalGames(remaining)
+      onSave(remaining)
+      setSelectedGameId(remaining[0]?.id ?? "")
+      setShowDeleteConfirm(false)
+      setSaveMsg(`🗑 "${game.title}" deleted.`)
+      setSaveStatus("saved")
+      setTimeout(() => { setSaveStatus("idle"); setSaveMsg("") }, 3000)
+    } catch (err) {
+      setSaveMsg(`⚠️ Delete failed: ${err instanceof Error ? err.message : "unknown error"}`)
+      setSaveStatus("error")
+      setTimeout(() => { setSaveStatus("idle"); setSaveMsg("") }, 4000)
+      setShowDeleteConfirm(false)
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   const updateGame = (updated: GameConfig) =>
@@ -219,6 +381,47 @@ export const AdminPanel: React.FC<Props> = ({ games, onBack, onSave, adminToken,
         } satisfies WordBuilderQuestion
         break
       }
+      case "puzzle": {
+        const patternNums = puzzlePatternRaw.split(",").map(s => +s.trim()).filter(n => !isNaN(n))
+        const puzzleFull = { ...puzzleForm, pattern: patternNums }
+        err = validatePuzzle(puzzleFull)
+        if (err) { setQError(err); return }
+        q = {
+          id: puzzleForm.id ?? `p-${crypto.randomUUID()}`, type: "puzzle",
+          difficulty: puzzleForm.difficulty ?? "easy", points: puzzleForm.points ?? 100,
+          pattern: patternNums, sequenceLength: puzzleForm.sequenceLength ?? 2,
+          instruction: puzzleForm.instruction!, hint: puzzleForm.hint ?? "",
+        } satisfies PuzzleQuestion
+        break
+      }
+      case "tapblitz": {
+        err = validateTapBlitz(tbForm)
+        if (err) { setQError(err); return }
+        q = {
+          id: tbForm.id ?? `tb-${crypto.randomUUID()}`, type: "tapblitz",
+          difficulty: tbForm.difficulty ?? "easy", points: tbForm.points ?? 500,
+          instruction: tbForm.instruction!, duration: tbForm.duration ?? 30,
+          spawnRate: tbForm.spawnRate ?? 1.2, targetLifetime: tbForm.targetLifetime ?? 3.5,
+          targetSpeed: tbForm.targetSpeed ?? 55,
+          targetMinRadius: tbForm.targetMinRadius ?? 28, targetMaxRadius: tbForm.targetMaxRadius ?? 44,
+          maxMisses: tbForm.maxMisses ?? 12,
+        } satisfies TapBlitzQuestion
+        break
+      }
+      case "binaryrunner": {
+        err = validateBinaryRunner(brForm)
+        if (err) { setQError(err); return }
+        q = {
+          id: brForm.id ?? `br-${crypto.randomUUID()}`, type: "binaryrunner",
+          difficulty: brForm.difficulty ?? "easy", points: brForm.points ?? 600,
+          instruction: brForm.instruction!, duration: brForm.duration ?? 40,
+          initialSpeed: brForm.initialSpeed ?? 55, maxSpeed: brForm.maxSpeed ?? 110,
+          speedRampPerSec: brForm.speedRampPerSec ?? 1.2,
+          spawnInterval: brForm.spawnInterval ?? 3.2,
+          operations: brForm.operations ?? ["AND", "OR"],
+        } satisfies BinaryRunnerQuestion
+        break
+      }
       default:
         setQError(`Question editing not supported for plugin type "${game.plugin}".`)
         return
@@ -258,6 +461,14 @@ export const AdminPanel: React.FC<Props> = ({ games, onBack, onSave, adminToken,
         setWbBonusRaw(wq.bonusWords?.join(", ") ?? "")
         break
       }
+      case "puzzle": {
+        const pq = q as PuzzleQuestion
+        setPuzzleForm({ ...pq })
+        setPuzzlePatternRaw(pq.pattern.join(","))
+        break
+      }
+      case "tapblitz":     setTbForm({ ...q as TapBlitzQuestion }); break
+      case "binaryrunner": setBrForm({ ...q as BinaryRunnerQuestion }); break
     }
   }
 
@@ -296,7 +507,7 @@ export const AdminPanel: React.FC<Props> = ({ games, onBack, onSave, adminToken,
     </div>
   )
 
-  const unsupported = !["quiz", "flashcard", "memory", "wordbuilder"].includes(game.plugin)
+  const unsupported = !["quiz", "flashcard", "memory", "wordbuilder", "puzzle", "tapblitz", "binaryrunner"].includes(game.plugin)
 
   return (
     <div className="page-wrap">
@@ -338,15 +549,29 @@ export const AdminPanel: React.FC<Props> = ({ games, onBack, onSave, adminToken,
         </div>
       )}
 
-      {/* Game selector */}
-      <div className="admin-game-tabs">
-        {localGames.map(g => (
-          <button key={g.id}
-            className={`admin-game-tab${g.id === selectedGameId ? " active" : ""}`}
-            onClick={() => { setSelectedGameId(g.id); resetForm() }}>
-            {g.ui?.emoji ?? "🎮"} {g.title}
-          </button>
-        ))}
+      {/* Game selector + create/delete controls */}
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "2px" }}>
+        <div className="admin-game-tabs" style={{ flex: 1, marginBottom: 0 }}>
+          {localGames.map(g => (
+            <button key={g.id}
+              className={`admin-game-tab${g.id === selectedGameId ? " active" : ""}`}
+              onClick={() => { setSelectedGameId(g.id); resetForm() }}>
+              {g.ui?.emoji ?? "🎮"} {g.title}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => { setShowCreateGame(true); setCreateError("") }}
+          style={{ flexShrink: 0, padding: "7px 14px", background: "linear-gradient(135deg,#22FFAA,#00D4FF)", color: "#0A0A0F",
+            border: "none", borderRadius: "8px", fontFamily: "Exo 2, sans-serif", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer" }}>
+          + New Game
+        </button>
+        <button
+          onClick={() => setShowDeleteConfirm(true)}
+          style={{ flexShrink: 0, padding: "7px 14px", background: "rgba(255,45,120,0.1)", color: "#FF6090",
+            border: "1px solid rgba(255,45,120,0.25)", borderRadius: "8px", fontFamily: "Exo 2, sans-serif", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer" }}>
+          🗑 Delete Game
+        </button>
       </div>
 
       {/* Tab bar */}
@@ -373,17 +598,28 @@ export const AdminPanel: React.FC<Props> = ({ games, onBack, onSave, adminToken,
                 <h3 className="admin-section-title">{editingQId ? "Edit Question" : `Add New ${game.plugin} Question`}</h3>
 
                 {/* ── Common fields ── */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginBottom: "4px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "4px" }}>
                   <div>
                     <Label required>Difficulty</Label>
                     <select className="admin-select"
-                      value={game.plugin === "quiz" ? quizForm.difficulty : game.plugin === "flashcard" ? flashForm.difficulty : game.plugin === "memory" ? memForm.difficulty : wbForm.difficulty}
+                      value={
+                        game.plugin === "quiz"        ? quizForm.difficulty
+                        : game.plugin === "flashcard" ? flashForm.difficulty
+                        : game.plugin === "memory"    ? memForm.difficulty
+                        : game.plugin === "puzzle"    ? puzzleForm.difficulty
+                        : game.plugin === "tapblitz"  ? tbForm.difficulty
+                        : game.plugin === "binaryrunner" ? brForm.difficulty
+                        : wbForm.difficulty
+                      }
                       onChange={e => {
                         const d = e.target.value as "easy" | "medium" | "hard"
-                        if (game.plugin === "quiz")        setQuizForm(f  => ({ ...f, difficulty: d }))
-                        else if (game.plugin === "flashcard") setFlashForm(f => ({ ...f, difficulty: d }))
-                        else if (game.plugin === "memory")    setMemForm(f  => ({ ...f, difficulty: d }))
-                        else                              setWbForm(f    => ({ ...f, difficulty: d }))
+                        if      (game.plugin === "quiz")         setQuizForm(f  => ({ ...f, difficulty: d }))
+                        else if (game.plugin === "flashcard")    setFlashForm(f => ({ ...f, difficulty: d }))
+                        else if (game.plugin === "memory")       setMemForm(f   => ({ ...f, difficulty: d }))
+                        else if (game.plugin === "puzzle")       setPuzzleForm(f => ({ ...f, difficulty: d }))
+                        else if (game.plugin === "tapblitz")     setTbForm(f    => ({ ...f, difficulty: d }))
+                        else if (game.plugin === "binaryrunner") setBrForm(f    => ({ ...f, difficulty: d }))
+                        else                                     setWbForm(f    => ({ ...f, difficulty: d }))
                       }}>
                       <option value="easy">Easy</option>
                       <option value="medium">Medium</option>
@@ -393,29 +629,26 @@ export const AdminPanel: React.FC<Props> = ({ games, onBack, onSave, adminToken,
                   <div>
                     <Label required>Points</Label>
                     <input className="admin-input" type="number" min={1}
-                      value={game.plugin === "quiz" ? quizForm.points : game.plugin === "flashcard" ? flashForm.points : game.plugin === "memory" ? memForm.points : wbForm.points}
+                      value={
+                        game.plugin === "quiz"        ? quizForm.points
+                        : game.plugin === "flashcard" ? flashForm.points
+                        : game.plugin === "memory"    ? memForm.points
+                        : game.plugin === "puzzle"    ? puzzleForm.points
+                        : game.plugin === "tapblitz"  ? tbForm.points
+                        : game.plugin === "binaryrunner" ? brForm.points
+                        : wbForm.points
+                      }
                       onChange={e => {
                         const v = +e.target.value
-                        if (game.plugin === "quiz")           setQuizForm(f  => ({ ...f, points: v }))
-                        else if (game.plugin === "flashcard") setFlashForm(f => ({ ...f, points: v }))
-                        else if (game.plugin === "memory")    setMemForm(f   => ({ ...f, points: v }))
-                        else                                  setWbForm(f    => ({ ...f, points: v }))
+                        if      (game.plugin === "quiz")         setQuizForm(f  => ({ ...f, points: v }))
+                        else if (game.plugin === "flashcard")    setFlashForm(f => ({ ...f, points: v }))
+                        else if (game.plugin === "memory")       setMemForm(f   => ({ ...f, points: v }))
+                        else if (game.plugin === "puzzle")       setPuzzleForm(f => ({ ...f, points: v }))
+                        else if (game.plugin === "tapblitz")     setTbForm(f    => ({ ...f, points: v }))
+                        else if (game.plugin === "binaryrunner") setBrForm(f    => ({ ...f, points: v }))
+                        else                                     setWbForm(f    => ({ ...f, points: v }))
                       }} />
                   </div>
-                  {game.plugin !== "memory" && (
-                    <div>
-                      <Label required>Time (sec)</Label>
-                      <input className="admin-input" type="number" min={5}
-                        style={{ minWidth: "90px", width: "100%" }}
-                        value={game.plugin === "quiz" ? quizForm.timeLimit : game.plugin === "flashcard" ? flashForm.timeLimit : wbForm.timeLimit}
-                        onChange={e => {
-                          const v = +e.target.value
-                          if (game.plugin === "quiz")           setQuizForm(f  => ({ ...f, timeLimit: v }))
-                          else if (game.plugin === "flashcard") setFlashForm(f => ({ ...f, timeLimit: v }))
-                          else                                  setWbForm(f    => ({ ...f, timeLimit: v }))
-                        }} />
-                    </div>
-                  )}
                 </div>
 
                 {/* ── QUIZ fields ── */}
@@ -560,6 +793,149 @@ export const AdminPanel: React.FC<Props> = ({ games, onBack, onSave, adminToken,
                   </>
                 )}
 
+                {/* ── PUZZLE fields ── */}
+                {game.plugin === "puzzle" && (
+                  <>
+                    <Label required>Instruction</Label>
+                    <input className="admin-input" placeholder="e.g. What are the next 2 numbers in the sequence?"
+                      value={puzzleForm.instruction ?? ""} onChange={e => setPuzzleForm(f => ({ ...f, instruction: e.target.value }))} />
+
+                    <Label required>Number Sequence (comma-separated, e.g. 2,4,6,8)</Label>
+                    <input className="admin-input" placeholder="2,4,6,8"
+                      value={puzzlePatternRaw}
+                      onChange={e => {
+                        setPuzzlePatternRaw(e.target.value)
+                        const nums = e.target.value.split(",").filter(s => s.trim() !== "").map(s => +s.trim()).filter(n => !isNaN(n))
+                        setPuzzleForm(f => ({ ...f, pattern: nums }))
+                      }} />
+
+                    <Label required>Answer Count (how many numbers does the player need to find?)</Label>
+                    <input className="admin-input" type="number" min={1} max={5}
+                      value={puzzleForm.sequenceLength ?? 2}
+                      onChange={e => setPuzzleForm(f => ({ ...f, sequenceLength: +e.target.value }))} />
+
+                    <Label required>Hint (explain the pattern rule)</Label>
+                    <input className="admin-input" placeholder="e.g. Add 2 each time."
+                      value={puzzleForm.hint ?? ""} onChange={e => setPuzzleForm(f => ({ ...f, hint: e.target.value }))} />
+
+                    <div style={{ padding: "10px 12px", borderRadius: "8px", background: "rgba(0,212,255,0.05)", border: "1px solid rgba(0,212,255,0.15)", marginTop: "8px", fontSize: "0.75rem", fontFamily: "Exo 2, sans-serif", color: "rgba(0,212,255,0.7)" }}>
+                      💡 <strong>Pattern tip:</strong> Enter the known part of the sequence — the player must figure out the next <strong>{puzzleForm.sequenceLength ?? 2}</strong> numbers.
+                      For example, pattern <code>2,4,6,8</code> with answer count <strong>2</strong> means the player must type <strong>10, 12</strong>.
+                    </div>
+                  </>
+                )}
+
+                {/* ── TAPBLITZ fields ── */}
+                {game.plugin === "tapblitz" && (
+                  <>
+                    <Label required>Wave Instruction</Label>
+                    <input className="admin-input" placeholder="e.g. Wave 1 — Tap the targets before they disappear!"
+                      value={tbForm.instruction ?? ""} onChange={e => setTbForm(f => ({ ...f, instruction: e.target.value }))} />
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                      <div>
+                        <Label required>Duration (seconds)</Label>
+                        <input className="admin-input" type="number" min={5} max={120}
+                          value={tbForm.duration ?? 30} onChange={e => setTbForm(f => ({ ...f, duration: +e.target.value }))} />
+                      </div>
+                      <div>
+                        <Label required>Max Misses</Label>
+                        <input className="admin-input" type="number" min={1} max={50}
+                          value={tbForm.maxMisses ?? 12} onChange={e => setTbForm(f => ({ ...f, maxMisses: +e.target.value }))} />
+                      </div>
+                      <div>
+                        <Label required>Spawn Rate (targets/sec)</Label>
+                        <input className="admin-input" type="number" min={0.1} max={10} step={0.1}
+                          value={tbForm.spawnRate ?? 1.2} onChange={e => setTbForm(f => ({ ...f, spawnRate: +e.target.value }))} />
+                      </div>
+                      <div>
+                        <Label required>Target Lifetime (sec)</Label>
+                        <input className="admin-input" type="number" min={0.5} max={10} step={0.5}
+                          value={tbForm.targetLifetime ?? 3.5} onChange={e => setTbForm(f => ({ ...f, targetLifetime: +e.target.value }))} />
+                      </div>
+                      <div>
+                        <Label required>Target Speed (px/sec)</Label>
+                        <input className="admin-input" type="number" min={0} max={300}
+                          value={tbForm.targetSpeed ?? 55} onChange={e => setTbForm(f => ({ ...f, targetSpeed: +e.target.value }))} />
+                      </div>
+                      <div>
+                        <Label>Min Radius (px)</Label>
+                        <input className="admin-input" type="number" min={10} max={80}
+                          value={tbForm.targetMinRadius ?? 28} onChange={e => setTbForm(f => ({ ...f, targetMinRadius: +e.target.value }))} />
+                      </div>
+                      <div>
+                        <Label>Max Radius (px)</Label>
+                        <input className="admin-input" type="number" min={10} max={80}
+                          value={tbForm.targetMaxRadius ?? 44} onChange={e => setTbForm(f => ({ ...f, targetMaxRadius: +e.target.value }))} />
+                      </div>
+                    </div>
+
+                    <div style={{ padding: "10px 12px", borderRadius: "8px", background: "rgba(255,215,0,0.05)", border: "1px solid rgba(255,215,0,0.15)", marginTop: "8px", fontSize: "0.75rem", fontFamily: "Exo 2, sans-serif", color: "rgba(255,215,0,0.7)" }}>
+                      ⚡ Each entry is a <strong>wave</strong>. Add multiple waves to create escalating difficulty — e.g. Wave 1 (slow), Wave 2 (faster), Wave 3 (boss wave).
+                    </div>
+                  </>
+                )}
+
+                {/* ── BINARYRUNNER fields ── */}
+                {game.plugin === "binaryrunner" && (
+                  <>
+                    <Label required>Stage Instruction</Label>
+                    <input className="admin-input" placeholder="e.g. Stage 1 — Steer into the correct answer lane!"
+                      value={brForm.instruction ?? ""} onChange={e => setBrForm(f => ({ ...f, instruction: e.target.value }))} />
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                      <div>
+                        <Label required>Duration (seconds)</Label>
+                        <input className="admin-input" type="number" min={5} max={180}
+                          value={brForm.duration ?? 40} onChange={e => setBrForm(f => ({ ...f, duration: +e.target.value }))} />
+                      </div>
+                      <div>
+                        <Label required>Initial Speed (px/sec)</Label>
+                        <input className="admin-input" type="number" min={20} max={300}
+                          value={brForm.initialSpeed ?? 55} onChange={e => setBrForm(f => ({ ...f, initialSpeed: +e.target.value }))} />
+                      </div>
+                      <div>
+                        <Label required>Max Speed (px/sec)</Label>
+                        <input className="admin-input" type="number" min={20} max={600}
+                          value={brForm.maxSpeed ?? 110} onChange={e => setBrForm(f => ({ ...f, maxSpeed: +e.target.value }))} />
+                      </div>
+                      <div>
+                        <Label>Speed Ramp (px/s²)</Label>
+                        <input className="admin-input" type="number" min={0} max={10} step={0.1}
+                          value={brForm.speedRampPerSec ?? 1.2} onChange={e => setBrForm(f => ({ ...f, speedRampPerSec: +e.target.value }))} />
+                      </div>
+                      <div>
+                        <Label required>Spawn Interval (sec)</Label>
+                        <input className="admin-input" type="number" min={0.5} max={10} step={0.5}
+                          value={brForm.spawnInterval ?? 3.2} onChange={e => setBrForm(f => ({ ...f, spawnInterval: +e.target.value }))} />
+                      </div>
+                    </div>
+
+                    <Label required>Logic Operations (check all that appear in this stage)</Label>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "4px", marginBottom: "8px" }}>
+                      {(["AND","OR","XOR","NOT","NAND","NOR"] as const).map(op => (
+                        <label key={op} style={{ display: "flex", alignItems: "center", gap: "5px", cursor: "pointer",
+                          padding: "5px 10px", borderRadius: "6px", fontFamily: "Exo 2, sans-serif", fontSize: "0.8rem",
+                          background: brForm.operations?.includes(op) ? "rgba(0,212,255,0.15)" : "rgba(255,255,255,0.04)",
+                          border: brForm.operations?.includes(op) ? "1px solid rgba(0,212,255,0.4)" : "1px solid rgba(255,255,255,0.1)",
+                          color: brForm.operations?.includes(op) ? "#00D4FF" : "rgba(232,224,255,0.5)" }}>
+                          <input type="checkbox" style={{ accentColor: "#00D4FF" }}
+                            checked={brForm.operations?.includes(op) ?? false}
+                            onChange={e => {
+                              const ops = brForm.operations ?? []
+                              setBrForm(f => ({ ...f, operations: e.target.checked ? [...ops, op] : ops.filter(o => o !== op) }))
+                            }} />
+                          {op}
+                        </label>
+                      ))}
+                    </div>
+
+                    <div style={{ padding: "10px 12px", borderRadius: "8px", background: "rgba(0,212,255,0.05)", border: "1px solid rgba(0,212,255,0.15)", marginTop: "4px", fontSize: "0.75rem", fontFamily: "Exo 2, sans-serif", color: "rgba(0,212,255,0.7)" }}>
+                      🚀 Each entry is a <strong>stage</strong>. Add multiple stages for progressive logic gate challenges — start with AND/OR, advance to XOR/NAND.
+                    </div>
+                  </>
+                )}
+
                 {qError && <div className="admin-error" style={{ marginTop: "10px" }}>⚠️ {qError}</div>}
 
                 <div className="admin-form-actions">
@@ -578,20 +954,30 @@ export const AdminPanel: React.FC<Props> = ({ games, onBack, onSave, adminToken,
                 {game.questions.length === 0 && (
                   <div className="empty-state-sm">No questions yet — add one on the left!</div>
                 )}
-                {game.questions.map(q => (
+                {game.questions.map((q, qi) => (
                   <div key={q.id} className="admin-q-row">
                     <div className="admin-q-info">
                       <span className={`badge badge-${q.difficulty}`}>{q.difficulty}</span>
                       <span className="admin-q-prompt">
-                        {q.type === "quiz"        ? (q as QuizQuestion).prompt
-                        : q.type === "flashcard"  ? `${(q as FlashcardQuestion).front} → ${(q as FlashcardQuestion).back}`
-                        : q.type === "memory"     ? `${(q as MemoryQuestion).pairs.length} pairs — ${(q as MemoryQuestion).instruction.slice(0, 30)}`
-                        : q.type === "wordbuilder"? `Letters: ${(q as WordBuilderQuestion).letters.join("")} (${(q as WordBuilderQuestion).validWords.length} words)`
+                        {q.type === "quiz"
+                          ? (q as QuizQuestion).prompt
+                        : q.type === "flashcard"
+                          ? `${(q as FlashcardQuestion).front} → ${(q as FlashcardQuestion).back}`
+                        : q.type === "memory"
+                          ? `${(q as MemoryQuestion).pairs.length} pairs — ${(q as MemoryQuestion).instruction.slice(0, 30)}`
+                        : q.type === "wordbuilder"
+                          ? `Letters: ${(q as WordBuilderQuestion).letters.join("")} (${(q as WordBuilderQuestion).validWords.length} words)`
+                        : q.type === "puzzle"
+                          ? `Pattern: ${(q as PuzzleQuestion).pattern.join(",")}… (find ${(q as PuzzleQuestion).sequenceLength})`
+                        : q.type === "tapblitz"
+                          ? `Wave ${qi + 1}: ${(q as TapBlitzQuestion).duration}s · ${(q as TapBlitzQuestion).spawnRate}/s spawn`
+                        : q.type === "binaryrunner"
+                          ? `Stage ${qi + 1}: ${(q as BinaryRunnerQuestion).duration}s · ${(q as BinaryRunnerQuestion).operations.join(",")} ops`
                         : q.id}
                       </span>
                     </div>
                     <div className="admin-q-actions">
-                      {["quiz","flashcard","memory","wordbuilder"].includes(q.type) && (
+                      {["quiz","flashcard","memory","wordbuilder","puzzle","tapblitz","binaryrunner"].includes(q.type) && (
                         <button className="admin-icon-btn" onClick={() => handleEditQ(q)}>✏️</button>
                       )}
                       <button className="admin-icon-btn danger" onClick={() => handleDeleteQ(q.id)}>🗑</button>
@@ -699,6 +1085,116 @@ export const AdminPanel: React.FC<Props> = ({ games, onBack, onSave, adminToken,
                   onChange={e => updateGame({ ...game, ui: { ...game.ui, [key]: e.target.checked } })} />
               </label>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── CREATE GAME MODAL ──────────────────────────────────────────────── */}
+      {showCreateGame && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 1000,
+          background: "rgba(10,10,15,0.85)", display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "20px",
+        }} onClick={e => { if (e.target === e.currentTarget) setShowCreateGame(false) }}>
+          <div style={{
+            background: "#12121A", border: "1px solid rgba(168,85,247,0.25)", borderRadius: "16px",
+            padding: "28px", maxWidth: "600px", width: "100%", maxHeight: "90vh", overflowY: "auto",
+          }}>
+            <h2 style={{ fontFamily: "Orbitron, sans-serif", color: "#E8E0FF", fontSize: "1.1rem", marginBottom: "4px" }}>
+              ✨ Create New Game
+            </h2>
+            <p style={{ fontFamily: "Exo 2, sans-serif", fontSize: "0.78rem", color: "rgba(232,224,255,0.4)", marginBottom: "20px" }}>
+              Choose a plugin type, fill in the basics — then add questions/waves/stages in the Questions tab.
+            </p>
+
+            {/* Plugin grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: "10px", marginBottom: "20px" }}>
+              {Object.entries(PLUGIN_META).map(([key, meta]) => (
+                <button key={key} onClick={() => setCreatePlugin(key)}
+                  style={{
+                    padding: "12px 8px", borderRadius: "10px", cursor: "pointer", textAlign: "center",
+                    fontFamily: "Exo 2, sans-serif", transition: "all 0.2s",
+                    background: createPlugin === key ? `${meta.color}18` : "rgba(255,255,255,0.03)",
+                    border: createPlugin === key ? `2px solid ${meta.color}` : "1px solid rgba(255,255,255,0.08)",
+                    color: createPlugin === key ? meta.color : "rgba(232,224,255,0.6)",
+                  }}>
+                  <div style={{ fontSize: "1.6rem", marginBottom: "4px" }}>{meta.emoji}</div>
+                  <div style={{ fontWeight: 700, fontSize: "0.75rem" }}>{meta.label}</div>
+                  <div style={{ fontSize: "0.65rem", marginTop: "3px", opacity: 0.7, lineHeight: 1.3 }}>{meta.desc}</div>
+                </button>
+              ))}
+            </div>
+
+            {/* Title / description / emoji */}
+            <Label required>Game Title</Label>
+            <input className="admin-input" placeholder={`e.g. ${PLUGIN_META[createPlugin]?.label} Challenge`}
+              value={createTitle} onChange={e => setCreateTitle(e.target.value)} />
+
+            <Label>Description (shown on game card)</Label>
+            <textarea className="admin-textarea" rows={2} placeholder="What does this game teach? Who is it for?"
+              value={createDesc} onChange={e => setCreateDesc(e.target.value)} />
+
+            <div style={{ display: "grid", gridTemplateColumns: "80px 1fr", gap: "10px" }}>
+              <div>
+                <Label>Emoji</Label>
+                <input className="admin-input" placeholder={PLUGIN_META[createPlugin]?.emoji ?? "🎮"}
+                  value={createEmoji} onChange={e => setCreateEmoji(e.target.value)}
+                  style={{ textAlign: "center", fontSize: "1.2rem" }} />
+              </div>
+              <div>
+                <Label>Learning Outcomes (comma-separated)</Label>
+                <input className="admin-input" placeholder="e.g. Problem Solving, Algorithms, Attention to Detail"
+                  value={createLO} onChange={e => setCreateLO(e.target.value)} />
+              </div>
+            </div>
+
+            {createError && (
+              <div className="admin-error" style={{ margin: "12px 0 0" }}>⚠️ {createError}</div>
+            )}
+
+            <div style={{ display: "flex", gap: "10px", marginTop: "20px", justifyContent: "flex-end" }}>
+              <button className="btn-ghost" onClick={() => setShowCreateGame(false)} disabled={createLoading}>
+                Cancel
+              </button>
+              <button className="btn-primary" onClick={handleCreateGame} disabled={createLoading}>
+                {createLoading ? "Creating…" : `✨ Create ${PLUGIN_META[createPlugin]?.label ?? "Game"}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── DELETE GAME CONFIRM DIALOG ─────────────────────────────────────── */}
+      {showDeleteConfirm && game && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 1000,
+          background: "rgba(10,10,15,0.85)", display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "20px",
+        }} onClick={e => { if (e.target === e.currentTarget) setShowDeleteConfirm(false) }}>
+          <div style={{
+            background: "#12121A", border: "1px solid rgba(255,45,120,0.3)", borderRadius: "16px",
+            padding: "28px", maxWidth: "420px", width: "100%",
+          }}>
+            <div style={{ fontSize: "2rem", textAlign: "center", marginBottom: "12px" }}>🗑</div>
+            <h2 style={{ fontFamily: "Orbitron, sans-serif", color: "#FF6090", fontSize: "1rem", textAlign: "center", marginBottom: "8px" }}>
+              Delete Game?
+            </h2>
+            <p style={{ fontFamily: "Exo 2, sans-serif", fontSize: "0.82rem", color: "rgba(232,224,255,0.6)", textAlign: "center", marginBottom: "20px" }}>
+              You are about to permanently delete <strong style={{ color: "#E8E0FF" }}>{game.ui?.emoji ?? "🎮"} {game.title}</strong>.
+              This will remove it from the game engine and cannot be undone.
+            </p>
+            <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+              <button className="btn-ghost" onClick={() => setShowDeleteConfirm(false)} disabled={deleteLoading}>
+                Keep Game
+              </button>
+              <button
+                onClick={handleDeleteGame} disabled={deleteLoading}
+                style={{ padding: "9px 22px", background: "rgba(255,45,120,0.15)", color: "#FF6090",
+                  border: "1px solid rgba(255,45,120,0.4)", borderRadius: "8px", fontFamily: "Exo 2, sans-serif",
+                  fontWeight: 700, fontSize: "0.82rem", cursor: deleteLoading ? "not-allowed" : "pointer" }}>
+                {deleteLoading ? "Deleting…" : "🗑 Yes, Delete"}
+              </button>
+            </div>
           </div>
         </div>
       )}

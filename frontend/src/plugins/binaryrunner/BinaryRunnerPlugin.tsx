@@ -19,13 +19,14 @@ import type {
   AnswerResult,
 } from "../../types/engine.types"
 import { HowToPlayModal, HelpButton } from "../../components/ui/HowToPlayModal"
+import { SoundEngine } from "../../services/SoundEngine"
 
 const BR_HOW_TO_STEPS = [
   { icon: "🎮", title: "Your Goal",     desc: "You are a Data Packet racing through a CPU. Logic-gate obstacles appear — switch to the lane whose answer is correct before the obstacle reaches you." },
   { icon: "⬅️", title: "Lane 0 (Left)", desc: "Press A or ← arrow key, OR click the LEFT half of the screen to move to Lane 0." },
   { icon: "➡️", title: "Lane 1 (Right)", desc: "Press D or → arrow key, OR click the RIGHT half of the screen to move to Lane 1." },
   { icon: "🧩", title: "Logic Gates",   desc: "Each obstacle shows a binary expression like  '1 AND 0 = ?'. The correct answer (0 or 1) is the lane you need to be in. AND, OR, XOR, NAND, NOR are used." },
-  { icon: "💡", title: "Reveal Hint",   desc: "When an obstacle gets close (about halfway), the correct lane glows CYAN/GREEN. Use this to double-check before impact!" },
+  { icon: "💡", title: "Reveal on Impact", desc: "Block colours are hidden until the moment of impact — no early hints! The correct lane flashes CYAN/GREEN only after it reaches you." },
   { icon: "❤️", title: "Lives",         desc: "You have 3 lives. Each wrong-lane hit costs one life. Lose all 3 and the run ends early." },
   { icon: "🔥", title: "Combo Bonus",   desc: "3+ consecutive correct answers builds a combo multiplier. Higher combo = more points per hit." },
 ]
@@ -145,9 +146,11 @@ const BinaryRunnerComponent: React.FC<PluginRenderProps<BinaryRunnerQuestion>> =
     answered:       0,             // total answered
     correct:        0,
     speed:          question.initialSpeed,
+    initialSpeed:   question.initialSpeed,   // stored for spawn normalisation
     distance:       0,
     lastSpawn:      0,
-    spawnInterval:  question.spawnInterval * 1000,
+    spawnInterval:  question.spawnInterval * 1000,  // ms between spawns at initialSpeed
+    prevTime:       0,             // for real-delta-time movement
     startTime:      0,
     ended:          false,
     sessionAnswered:false,
@@ -201,6 +204,8 @@ const BinaryRunnerComponent: React.FC<PluginRenderProps<BinaryRunnerQuestion>> =
     setEnded(true)
 
     const correct = g.correct > g.answered - g.correct
+    if (correct) SoundEngine.levelComplete()
+    else         SoundEngine.wrong()
     const result: AnswerResult = {
       questionId:    question.id,
       correct,
@@ -253,8 +258,10 @@ const BinaryRunnerComponent: React.FC<PluginRenderProps<BinaryRunnerQuestion>> =
 
     const g      = gameRef.current
     g.startTime  = performance.now()
+    g.prevTime   = g.startTime
     g.bank       = buildChallenges(60, question.operations as Op[])
-    g.lastSpawn  = g.startTime - g.spawnInterval  // spawn immediately
+    // Set lastSpawn so first block spawns on the very first frame
+    g.lastSpawn  = g.startTime - g.spawnInterval
 
     const loop = (now: number) => {
       if (g.ended) return
@@ -263,7 +270,9 @@ const BinaryRunnerComponent: React.FC<PluginRenderProps<BinaryRunnerQuestion>> =
       setTimeLeft(Math.max(0, Math.ceil(remaining / 1000)))
       if (remaining <= 0 || g.lives <= 0) { endRun(); return }
 
-      const dt = 1 / 60
+      // Real delta time (capped at 50 ms to handle tab-switch stutters)
+      const dt = Math.min((now - g.prevTime) / 1000, 0.05)
+      g.prevTime = now
 
       // Speed ramp
       g.speed = Math.min(
@@ -278,8 +287,11 @@ const BinaryRunnerComponent: React.FC<PluginRenderProps<BinaryRunnerQuestion>> =
         if (g.laneAnim >= 1) g.playerLane = g.targetLane
       }
 
-      // Spawn
-      if (now - g.lastSpawn >= g.spawnInterval / g.speed * 80) {
+      // Spawn — interval shrinks proportionally as speed increases
+      // At initialSpeed  → interval = spawnInterval (ms)
+      // At 2× initialSpeed → interval = spawnInterval/2 (ms)
+      const spawnThreshold = g.spawnInterval * (g.initialSpeed / g.speed)
+      if (now - g.lastSpawn >= spawnThreshold) {
         spawnChallenge(now)
       }
 
@@ -310,12 +322,15 @@ const BinaryRunnerComponent: React.FC<PluginRenderProps<BinaryRunnerQuestion>> =
             g.correct++
             setScore(g.score)
             setCombo(g.combo)
+            if (g.combo === 5 || g.combo === 10 || g.combo === 20) SoundEngine.streak()
+            else SoundEngine.runnerHit()
             burst(perspX(laneAtHit, Z_HIT), perspY(Z_HIT), "#22FFAA")
           } else {
             g.combo   = 0
             g.lives   = Math.max(0, g.lives - 1)
             setLives(g.lives)
             setCombo(0)
+            SoundEngine.runnerMiss()
             setWrongFlash(true)
             setTimeout(() => setWrongFlash(false), 280)
             burst(perspX(laneAtHit, Z_HIT), perspY(Z_HIT), "#FF2D78")
@@ -412,23 +427,29 @@ const BinaryRunnerComponent: React.FC<PluginRenderProps<BinaryRunnerQuestion>> =
         const wrongX = perspX(c.answer === 0 ? 1 : 0, c.z)
         const cy     = perspY(c.z) - boxH / 2
 
-        // Reveal correct/wrong colour only in the last 28% of track (just before impact)
-        const reveal = c.z < FAR_Z * 0.28
+        // Colours are hidden until the MOMENT OF IMPACT — both blocks look
+        // identical while approaching.  Only after c.answered flips true do
+        // we reveal correct (cyan) vs wrong (red) feedback.
+        const reveal = c.answered
 
-        // Wrong lane block — dark red fill, vivid red border
+        // Wrong lane block — neutral before impact, red flash after a miss
         drawBlock(ctx, wrongX, cy, boxW, boxH,
-          c.answered && !c.correct ? "rgba(255,45,120,0.55)" : "rgba(60,10,30,0.85)",
-          c.answered && !c.correct ? "#FF2D78" : "#CC2255",
-          scale, c.answered && !c.correct ? "✗" : "")
+          reveal
+            ? (c.correct ? "rgba(30,15,60,0.85)"   : "rgba(255,45,120,0.55)")
+            : "rgba(30,15,60,0.85)",
+          reveal
+            ? (c.correct ? "#5544AA"               : "#FF2D78")
+            : "#5544AA",
+          scale, reveal && !c.correct ? "✗" : "")
 
-        // Correct lane block — cyan glow when revealed
+        // Correct lane block — neutral before impact, cyan glow after
         drawBlock(ctx, ansX, cy, boxW, boxH,
           reveal
-            ? (c.answered && c.correct ? "rgba(34,255,170,0.45)" : "rgba(34,255,170,0.15)")
+            ? (c.correct ? "rgba(34,255,170,0.45)" : "rgba(34,255,170,0.15)")
             : "rgba(30,15,60,0.85)",
           reveal ? "#22FFAA" : "#5544AA",
           scale,
-          c.answered && c.correct ? "✓" : "")
+          reveal && c.correct ? "✓" : "")
 
         // Challenge question text — big, bright, centred above blocks
         const fontSize = Math.max(14, 24 * scale)

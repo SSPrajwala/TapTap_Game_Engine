@@ -48,17 +48,66 @@ async function callGemini(systemPrompt, userPrompt) {
 }
 
 /**
- * Call Groq and parse JSON from the response.
- * LLMs sometimes wrap JSON in ```json ... ``` fences — strip them.
+ * Robustly extract the first complete JSON object from an LLM response.
+ * Handles: markdown fences, preamble text, trailing comments, extra whitespace.
  */
-async function callGeminiJSON(systemPrompt, userPrompt) {
-  const raw  = await callGemini(systemPrompt, userPrompt)
-  const text = raw
-    .replace(/^```json\s*/im, "")
-    .replace(/^```\s*/im,     "")
-    .replace(/```\s*$/im,     "")
+function extractJSON(raw) {
+  // 1. Strip markdown fences (```json ... ``` or ``` ... ```)
+  let text = raw
+    .replace(/```json\s*/gi, "")
+    .replace(/```\s*/g, "")
     .trim()
-  return JSON.parse(text)
+
+  // 2. Find the first top-level { ... } by bracket counting
+  const start = text.indexOf("{")
+  if (start === -1) throw new Error("No JSON object found in AI response")
+
+  let depth = 0
+  let end   = -1
+  for (let i = start; i < text.length; i++) {
+    if (text[i] === "{") depth++
+    else if (text[i] === "}") {
+      depth--
+      if (depth === 0) { end = i; break }
+    }
+  }
+  if (end === -1) throw new Error("Unbalanced braces in AI response")
+
+  const jsonStr = text.slice(start, end + 1)
+
+  // 3. Remove trailing commas before } or ] (common LLM mistake)
+  const cleaned = jsonStr.replace(/,(\s*[}\]])/g, "$1")
+
+  return JSON.parse(cleaned)
+}
+
+/**
+ * Call Groq and parse JSON from the response.
+ * Retries up to MAX_RETRIES times with lower temperature on parse failures.
+ */
+const MAX_JSON_RETRIES = 3
+async function callGeminiJSON(systemPrompt, userPrompt) {
+  let lastError
+  for (let attempt = 0; attempt < MAX_JSON_RETRIES; attempt++) {
+    try {
+      const temperature = attempt === 0 ? 0.7 : attempt === 1 ? 0.3 : 0.1
+      const response = await getGroq().chat.completions.create({
+        model:    "llama-3.3-70b-versatile",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user",   content: attempt === 0 ? userPrompt : `${userPrompt}\n\nIMPORTANT: Return ONLY the raw JSON object. No explanation, no markdown, no code fences.` },
+        ],
+        temperature,
+        max_tokens: 4096,
+      })
+      const raw = response.choices[0].message.content
+      return extractJSON(raw)
+    } catch (err) {
+      lastError = err
+      console.warn(`AI JSON parse attempt ${attempt + 1} failed:`, err.message)
+    }
+  }
+  throw new Error(`AI returned invalid JSON after ${MAX_JSON_RETRIES} attempts: ${lastError?.message}`)
 }
 
 /**
@@ -103,11 +152,26 @@ function fixQuizConfig(config) {
     while (fixed.options.length < 4) fixed.options.push(`Option ${fixed.options.length + 1}`)
     fixed.options = fixed.options.slice(0, 4).map(String)
 
-    // Fix correctIndex — AI might send "answer" string or wrong type
+    // Fix correctIndex — AI often returns a string "2" instead of number 2,
+    // or uses an "answer" / "correctAnswer" field with the option text.
     if (typeof fixed.correctIndex !== "number") {
-      const answerStr = (fixed.answer ?? fixed.correctAnswer ?? "").toString().toLowerCase().trim()
-      const idx = fixed.options.findIndex(o => o.toString().toLowerCase().trim() === answerStr)
-      fixed.correctIndex = idx >= 0 ? idx : 0
+      // Step 1: Try parsing as integer string ("0","1","2","3")
+      const parsed = parseInt(String(fixed.correctIndex ?? ""), 10)
+      if (!isNaN(parsed) && parsed >= 0 && parsed <= 3) {
+        fixed.correctIndex = parsed
+      } else {
+        // Step 2: Match against options array by text
+        const answerStr = (fixed.answer ?? fixed.correctAnswer ?? fixed.correctIndex ?? "")
+          .toString().toLowerCase().trim()
+        const idx = fixed.options.findIndex(o => o.toString().toLowerCase().trim() === answerStr)
+        // Step 3: Only fall back to 0 if we genuinely cannot determine — log a warning
+        if (idx >= 0) {
+          fixed.correctIndex = idx
+        } else {
+          console.warn(`[AI Fix] Could not determine correctIndex for question "${fixed.prompt}" — defaulting to 0`)
+          fixed.correctIndex = 0
+        }
+      }
     }
     fixed.correctIndex = Math.min(Math.max(0, Math.floor(Number(fixed.correctIndex))), 3)
     delete fixed.answer; delete fixed.correctAnswer
@@ -341,14 +405,13 @@ router.post("/generate/flashcard", requireAuth, async (req, res) => {
   const count = Math.min(Number(cardCount ?? 12), 24)
 
   const userPrompt = `Create a flashcard game for studying "${topic}".
-- Exactly ${count} cards (each is a "true_false" type for the flip mechanic)
+- Exactly ${count} cards, type must be "flashcard" for every card
 - Difficulty: ${difficulty ?? "medium"}
-- Prompts should be on one side: definition, concept, or term
-- Answer "True" means the statement is correct / the definition is accurate
-- Answer "False" means the opposite / incorrect statement
-- Each card must have a thorough explanation
-- Generate unique kebab-case id
-Return ONLY the JSON game config.`
+- "front": a term, concept, or question the student sees first
+- "back": the definition, answer, or explanation revealed when the card is flipped
+- Make content educationally rich and relevant to "${topic}"
+- Generate unique kebab-case id for the game
+Return ONLY the raw JSON game config — no markdown, no explanation.`
 
   try {
     const rawConfig  = await callGeminiJSON(FLASHCARD_SCHEMA, userPrompt)
@@ -371,6 +434,311 @@ Return ONLY the JSON game config.`
     res.status(500).json({ error: "AI generation failed. Please try again.", detail: err.message })
   }
 })
+
+// ── POST /api/ai/generate/puzzle ─────────────────────────────────────────────
+// Generates pattern-sequence questions for the puzzle plugin.
+// Each question is a number sequence where the player must continue the pattern.
+router.post("/generate/puzzle", requireAuth, async (req, res) => {
+  const { topic, questionCount, difficulty } = req.body ?? {}
+  const count = Math.min(Number(questionCount ?? 8), 16)
+  const diff  = difficulty ?? "mixed"
+
+  const PUZZLE_SCHEMA = `
+You are TapTap AI. Return ONLY valid JSON — no markdown, no extra text.
+
+PUZZLE GAME FORMAT:
+{
+  "id": "ai-puzzle-{topic-kebab}-{timestamp}",
+  "title": "Puzzle title",
+  "plugin": "puzzle",
+  "version": "1.0.0",
+  "description": "Short description",
+  "questions": [
+    {
+      "id": "p1",
+      "type": "puzzle",
+      "difficulty": "easy",
+      "points": 100,
+      "pattern": [2, 4, 6, 8],
+      "sequenceLength": 2,
+      "instruction": "What are the next 2 numbers?",
+      "hint": "Add 2 each time."
+    }
+  ],
+  "levels": [
+    { "id": "level-easy",   "title": "Easy Patterns",   "description": "Warm-up",  "questionIds": ["p1","p2"], "passingScore": 50 },
+    { "id": "level-medium", "title": "Medium Patterns",  "description": "Core",     "questionIds": ["p3","p4"], "passingScore": 60 },
+    { "id": "level-hard",   "title": "Hard Patterns",    "description": "Advanced", "questionIds": ["p5","p6"], "passingScore": 70 }
+  ],
+  "adaptiveRules": [
+    { "condition": { "metric": "accuracy", "operator": ">=", "value": 0.9 }, "action": { "type": "adjustDifficulty", "payload": { "difficulty": "hard" } } },
+    { "condition": { "metric": "accuracy", "operator": "<",  "value": 0.5 }, "action": { "type": "showHint" } }
+  ],
+  "scoring": { "basePoints": 100, "timeBonus": false, "timeBonusPerSecond": 0, "streakMultiplier": true, "streakThreshold": 2, "streakMultiplierValue": 1.25 },
+  "ui": { "emoji": "🔢", "showProgress": true, "showStreak": true, "showTimer": false }
+}
+
+RULES:
+1. "type" must be exactly "puzzle" for every question
+2. "pattern" is an array of numbers (the given sequence)
+3. "sequenceLength" is how many numbers the player must find (usually 2 or 3)
+4. "hint" must explain the pattern rule clearly
+5. "points": easy=100, medium=200, hard=400
+6. Mix arithmetic (+), geometric (*), quadratic (squares/cubes), Fibonacci-style, and descending patterns for variety
+7. Make patterns related to the topic "${topic ?? "general aptitude"}" where possible (e.g. prime numbers, powers of 2, etc.)
+`
+
+  const slug = (topic ?? "pattern").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
+  const userPrompt = `Create a pattern puzzle game${topic ? ` about "${topic}"` : ""}.
+- Exactly ${count} questions
+- Difficulty distribution: ${diff === "mixed" ? "~40% easy, ~40% medium, ~20% hard" : `all ${diff}`}
+- Include a variety of pattern types: arithmetic, geometric, squared/cubed, halving, Fibonacci-style
+- Make patterns APTITUDe-relevant (used in TCS, Infosys, Wipro campus placement tests)
+- Use id: "ai-puzzle-${slug}-${Date.now()}"
+- Return ONLY raw JSON`
+
+  try {
+    const raw    = await callGeminiJSON(PUZZLE_SCHEMA, userPrompt)
+    const config = fixPuzzleConfig(raw)
+    const tokensUsed = Math.round(JSON.stringify(config).length / 4)
+    const gen = await prisma.aiGeneration.create({ data: { userId: req.user.id, type: "puzzle", prompt: userPrompt, result: config, tokensUsed } })
+    res.json({ success: true, generationId: gen.id, config })
+  } catch (err) {
+    console.error("AI puzzle generation error:", err)
+    res.status(500).json({ error: "AI generation failed.", detail: err.message })
+  }
+})
+
+function fixPuzzleConfig(config) {
+  if (!config || typeof config !== "object") throw new Error("Invalid JSON structure")
+  config.plugin  = "puzzle"
+  config.version = config.version ?? "1.0.0"
+  config.ui      = config.ui ?? { emoji: "🔢", showProgress: true, showStreak: true, showTimer: false }
+  config.scoring = config.scoring ?? { basePoints: 100, timeBonus: false, timeBonusPerSecond: 0, streakMultiplier: true, streakThreshold: 2, streakMultiplierValue: 1.25 }
+  if (!Array.isArray(config.questions) || config.questions.length === 0) throw new Error("No questions generated")
+  config.questions = config.questions.map((q, i) => {
+    const f = { ...q }
+    f.id             = `p${i + 1}`
+    f.type           = "puzzle"
+    f.difficulty     = ["easy","medium","hard"].includes(f.difficulty) ? f.difficulty : "medium"
+    f.points         = f.points ?? (f.difficulty === "hard" ? 400 : f.difficulty === "easy" ? 100 : 200)
+    f.pattern        = Array.isArray(f.pattern) ? f.pattern.map(Number).filter(n => !isNaN(n)) : [1,2,3,4]
+    f.sequenceLength = Math.max(1, Number(f.sequenceLength ?? 2))
+    f.instruction    = f.instruction ?? `What are the next ${f.sequenceLength} numbers?`
+    f.hint           = f.hint ?? "Look at the difference between consecutive numbers."
+    return f
+  })
+  const allIds    = config.questions.map(q => q.id)
+  const easyIds   = config.questions.filter(q => q.difficulty === "easy").map(q => q.id)
+  const mediumIds = config.questions.filter(q => q.difficulty === "medium").map(q => q.id)
+  const hardIds   = config.questions.filter(q => q.difficulty === "hard").map(q => q.id)
+  config.levels = []
+  if (easyIds.length > 0)   config.levels.push({ id: "level-easy",   title: "Easy Patterns",   description: "Warm-up sequences",      questionIds: easyIds,   passingScore: 50 })
+  if (mediumIds.length > 0) config.levels.push({ id: "level-medium", title: "Medium Patterns",  description: "Core pattern recognition", questionIds: mediumIds, passingScore: 60 })
+  if (hardIds.length > 0)   config.levels.push({ id: "level-hard",   title: "Hard Patterns",    description: "Advanced sequences",      questionIds: hardIds,   passingScore: 70 })
+  if (!config.levels.length) config.levels = [{ id: "level-1", title: "All Patterns", description: "Complete the puzzle", questionIds: allIds, passingScore: 60 }]
+  config.adaptiveRules = config.adaptiveRules ?? [
+    { condition: { metric: "accuracy", operator: ">=", value: 0.9 }, action: { type: "adjustDifficulty", payload: { difficulty: "hard" } } },
+    { condition: { metric: "accuracy", operator: "<",  value: 0.5 }, action: { type: "showHint" } },
+  ]
+  return config
+}
+
+// ── POST /api/ai/generate/memory ──────────────────────────────────────────────
+// Generates emoji-pair matching games for the memory plugin.
+router.post("/generate/memory", requireAuth, async (req, res) => {
+  const { topic, pairCount } = req.body ?? {}
+  if (!topic) return res.status(400).json({ error: "topic is required." })
+  const count = Math.min(Number(pairCount ?? 6), 12)
+
+  const MEMORY_SCHEMA = `
+You are TapTap AI. Return ONLY valid JSON — no markdown, no extra text.
+
+MEMORY GAME FORMAT:
+{
+  "id": "ai-memory-{topic-kebab}-{timestamp}",
+  "title": "Memory game title",
+  "plugin": "memory",
+  "version": "1.0.0",
+  "description": "Short description",
+  "questions": [
+    {
+      "id": "m1",
+      "type": "memory",
+      "difficulty": "easy",
+      "points": 200,
+      "instruction": "Match each word to its emoji!",
+      "pairs": [
+        { "id": "p1", "label": "Sun",     "emoji": "☀️" },
+        { "id": "p2", "label": "Moon",    "emoji": "🌙" },
+        { "id": "p3", "label": "Rain",    "emoji": "🌧️" },
+        { "id": "p4", "label": "Snow",    "emoji": "❄️" }
+      ]
+    }
+  ],
+  "levels": [
+    { "id": "level-1", "title": "Round 1", "description": "Match the pairs", "questionIds": ["m1","m2"], "passingScore": 60 }
+  ],
+  "adaptiveRules": [],
+  "scoring": { "basePoints": 200, "timeBonus": false, "timeBonusPerSecond": 0, "streakMultiplier": false, "streakThreshold": 3, "streakMultiplierValue": 1 },
+  "ui": { "emoji": "🧩", "showProgress": true, "showStreak": false }
+}
+
+RULES:
+1. "type" must be exactly "memory" for every question
+2. Every "pairs" entry needs "id", "label" (word/concept), and "emoji" (single emoji char)
+3. Each question should have 4-6 pairs
+4. Labels should relate to the topic — this is educational memory training
+5. Use meaningful emoji that visually represent the concept (not random)
+6. "points": easy=200, medium=300, hard=400
+`
+
+  const slug = topic.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
+  const userPrompt = `Create a memory emoji-matching game about "${topic}".
+- ${count} rounds (questions), each with 4-6 pairs
+- Make labels educationally relevant to "${topic}" (vocabulary, concepts, symbols)
+- Ensure each emoji clearly and intuitively represents its label
+- Mix difficulty: some rounds have more pairs or harder concepts
+- Use id: "ai-memory-${slug}-${Date.now()}"
+- Return ONLY raw JSON`
+
+  try {
+    const raw    = await callGeminiJSON(MEMORY_SCHEMA, userPrompt)
+    const config = fixMemoryConfig(raw)
+    const tokensUsed = Math.round(JSON.stringify(config).length / 4)
+    const gen = await prisma.aiGeneration.create({ data: { userId: req.user.id, type: "memory", prompt: userPrompt, result: config, tokensUsed } })
+    res.json({ success: true, generationId: gen.id, config })
+  } catch (err) {
+    console.error("AI memory generation error:", err)
+    res.status(500).json({ error: "AI generation failed.", detail: err.message })
+  }
+})
+
+function fixMemoryConfig(config) {
+  if (!config || typeof config !== "object") throw new Error("Invalid JSON structure")
+  config.plugin  = "memory"
+  config.version = config.version ?? "1.0.0"
+  config.ui      = config.ui ?? { emoji: "🧩", showProgress: true, showStreak: false }
+  config.scoring = config.scoring ?? { basePoints: 200, timeBonus: false, timeBonusPerSecond: 0, streakMultiplier: false, streakThreshold: 3, streakMultiplierValue: 1 }
+  if (!Array.isArray(config.questions) || config.questions.length === 0) throw new Error("No questions generated")
+  config.questions = config.questions.map((q, i) => {
+    const f = { ...q }
+    f.id          = `m${i + 1}`
+    f.type        = "memory"
+    f.difficulty  = ["easy","medium","hard"].includes(f.difficulty) ? f.difficulty : "medium"
+    f.points      = f.points ?? (f.difficulty === "hard" ? 400 : f.difficulty === "easy" ? 200 : 300)
+    f.instruction = f.instruction ?? "Match each word to its emoji!"
+    if (!Array.isArray(f.pairs) || f.pairs.length < 2) {
+      f.pairs = [{ id: "p1", label: "Item 1", emoji: "⭐" }, { id: "p2", label: "Item 2", emoji: "🔹" }]
+    }
+    f.pairs = f.pairs.map((p, pi) => ({
+      id:    p.id ?? `p${pi + 1}`,
+      label: (p.label ?? p.word ?? p.concept ?? `Item ${pi + 1}`).toString().trim(),
+      emoji: (p.emoji ?? p.icon ?? "❓").toString().trim(),
+    }))
+    return f
+  })
+  const allIds = config.questions.map(q => q.id)
+  config.levels = [{ id: "level-1", title: "All Rounds", description: "Match all the pairs", questionIds: allIds, passingScore: 60 }]
+  config.adaptiveRules = []
+  return config
+}
+
+// ── POST /api/ai/generate/wordbuilder ─────────────────────────────────────────
+// Generates word-building challenges for the wordbuilder plugin.
+router.post("/generate/wordbuilder", requireAuth, async (req, res) => {
+  const { topic, wordCount, difficulty } = req.body ?? {}
+  if (!topic) return res.status(400).json({ error: "topic is required." })
+  const count = Math.min(Number(wordCount ?? 4), 8)
+
+  const WB_SCHEMA = `
+You are TapTap AI. Return ONLY valid JSON — no markdown, no extra text.
+
+WORDBUILDER GAME FORMAT:
+{
+  "id": "ai-wb-{topic-kebab}-{timestamp}",
+  "title": "Word Builder title",
+  "plugin": "wordbuilder",
+  "version": "1.0.0",
+  "description": "Short description",
+  "questions": [
+    {
+      "id": "wb1",
+      "type": "wordbuilder",
+      "difficulty": "easy",
+      "points": 300,
+      "instruction": "Build as many words as you can from these letters!",
+      "letters": ["A","P","L","E","S","T"],
+      "validWords": ["apple","lapse","plate","tales","steal","petals","staple"],
+      "bonusWords": ["petals","staple"],
+      "targetCount": 3
+    }
+  ],
+  "levels": [
+    { "id": "level-1", "title": "Round 1", "description": "Word building", "questionIds": ["wb1","wb2"], "passingScore": 60 }
+  ],
+  "adaptiveRules": [],
+  "scoring": { "basePoints": 300, "timeBonus": false, "timeBonusPerSecond": 0, "streakMultiplier": false, "streakThreshold": 3, "streakMultiplierValue": 1 },
+  "ui": { "emoji": "📝", "showProgress": true, "showStreak": false }
+}
+
+RULES:
+1. "type" must be exactly "wordbuilder"
+2. "letters" is an array of UPPERCASE single characters
+3. "validWords" are all lowercase words that can be formed from exactly those letters
+4. Every word in validWords must only use the letters provided (with repetition if a letter appears multiple times)
+5. "bonusWords" are a subset of validWords that are harder/longer
+6. "targetCount" is the minimum number of words the player must find to pass
+7. Make validWords comprehensive — include short 2-3 letter words too
+`
+
+  const slug = topic.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")
+  const userPrompt = `Create a word-building game based on "${topic}".
+- ${count} rounds (questions)
+- Each round: pick 6-8 letters that can form many words
+- Make letters relevant to vocabulary from "${topic}"
+- Include all valid anagram combinations in validWords (minimum 5 per round)
+- Difficulty: ${difficulty ?? "mixed"} (easy=fewer letters, hard=more letters + longer words)
+- Use id: "ai-wb-${slug}-${Date.now()}"
+- Return ONLY raw JSON`
+
+  try {
+    const raw    = await callGeminiJSON(WB_SCHEMA, userPrompt)
+    const config = fixWordBuilderConfig(raw)
+    const tokensUsed = Math.round(JSON.stringify(config).length / 4)
+    const gen = await prisma.aiGeneration.create({ data: { userId: req.user.id, type: "wordbuilder", prompt: userPrompt, result: config, tokensUsed } })
+    res.json({ success: true, generationId: gen.id, config })
+  } catch (err) {
+    console.error("AI wordbuilder generation error:", err)
+    res.status(500).json({ error: "AI generation failed.", detail: err.message })
+  }
+})
+
+function fixWordBuilderConfig(config) {
+  if (!config || typeof config !== "object") throw new Error("Invalid JSON structure")
+  config.plugin  = "wordbuilder"
+  config.version = config.version ?? "1.0.0"
+  config.ui      = config.ui ?? { emoji: "📝", showProgress: true, showStreak: false }
+  config.scoring = config.scoring ?? { basePoints: 300, timeBonus: false, timeBonusPerSecond: 0, streakMultiplier: false, streakThreshold: 3, streakMultiplierValue: 1 }
+  if (!Array.isArray(config.questions) || config.questions.length === 0) throw new Error("No questions generated")
+  config.questions = config.questions.map((q, i) => {
+    const f = { ...q }
+    f.id          = `wb${i + 1}`
+    f.type        = "wordbuilder"
+    f.difficulty  = ["easy","medium","hard"].includes(f.difficulty) ? f.difficulty : "medium"
+    f.points      = f.points ?? 300
+    f.instruction = f.instruction ?? "Build as many words as you can from these letters!"
+    f.letters     = Array.isArray(f.letters) ? f.letters.map(l => String(l).toUpperCase().trim()).filter(Boolean) : ["A","P","L","E","S"]
+    f.validWords  = Array.isArray(f.validWords) ? f.validWords.map(w => String(w).toLowerCase().trim()).filter(Boolean) : []
+    f.bonusWords  = Array.isArray(f.bonusWords) ? f.bonusWords.map(w => String(w).toLowerCase().trim()).filter(Boolean) : []
+    f.targetCount = Math.max(1, Number(f.targetCount ?? 3))
+    return f
+  })
+  const allIds = config.questions.map(q => q.id)
+  config.levels = [{ id: "level-1", title: "All Challenges", description: "Build as many words as you can", questionIds: allIds, passingScore: 60 }]
+  config.adaptiveRules = []
+  return config
+}
 
 // ── POST /api/ai/generate/explanation ────────────────────────────────────────
 // Explain a concept (shown in-game after wrong answer via Blackbuck AI)

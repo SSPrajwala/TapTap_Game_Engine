@@ -443,6 +443,7 @@ body::after {
   position: absolute;
   inset: 0;
   border-radius: inherit;
+  pointer-events: none;
   background: conic-gradient(
     from 0deg,
     transparent 0deg,
@@ -648,7 +649,7 @@ body::after {
   background: var(--bg-card);
   border: 1px solid rgba(168, 85, 247, 0.25);
   border-radius: var(--r-card);
-  overflow: hidden;
+  overflow: visible;
   backdrop-filter: blur(20px);
   box-shadow: var(--glow-card);
 }
@@ -768,8 +769,12 @@ body::after {
   flex-wrap: wrap;
   gap: 10px;
   padding: 14px 22px;
-  border-top: 1px solid rgba(168, 85, 247, 0.12);
-  background: rgba(168, 85, 247, 0.04);
+  border-top: 1px solid rgba(168, 85, 247, 0.25);
+  background: rgba(10, 8, 30, 0.92);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
 }
 
 .result-toast {
@@ -1659,25 +1664,30 @@ body::after {
 
 .lb-header-row {
   display: grid;
-  grid-template-columns: 44px 1fr 90px 70px 55px 55px;
+  /* columns overridden per-table via inline style — this is a fallback */
+  grid-template-columns: 44px 1fr 90px 80px 64px 44px;
   gap: 8px; padding: 8px 16px;
   font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
   letter-spacing: 0.1em; color: rgba(232,224,255,0.3);
   font-family: var(--font-display);
   border-bottom: 1px solid rgba(168,85,247,0.15);
+  min-width: 420px;
 }
 
-.lb-list { display: flex; flex-direction: column; gap: 6px; }
+/* horizontal scroll wrapper so the table never breaks on narrow screens */
+.lb-list { display: flex; flex-direction: column; gap: 6px; overflow-x: auto; }
 
 .lb-row {
   display: grid;
-  grid-template-columns: 44px 1fr 90px 70px 55px 55px;
+  /* columns overridden per-table via inline style — this is a fallback */
+  grid-template-columns: 44px 1fr 90px 80px 64px 44px;
   gap: 8px; align-items: center;
   background: rgba(168,85,247,0.06);
   border: 1px solid rgba(168,85,247,0.15);
   border-radius: var(--r-hex);
   padding: 12px 16px;
   transition: all 0.2s;
+  min-width: 420px;
 }
 
 .lb-row:hover { background: rgba(168,85,247,0.12); border-color: rgba(168,85,247,0.3); transform: translateX(4px); }
@@ -1977,8 +1987,9 @@ body::after {
 @media (max-width: 600px) {
   .app-header h1 { font-size: 1.5rem; }
   .game-library { grid-template-columns: 1fr; }
-  .lb-header-row, .lb-row { grid-template-columns: 36px 1fr 80px 60px; }
-  .lb-col-acc, .lb-col-date { display: none; }
+  /* lb-header-row / lb-row grid columns are set inline — lb-list scrolls horizontally */
+  .lb-list { overflow-x: auto; }
+  .lb-header-row, .lb-row { min-width: 400px; }
   .sudoku-grid { max-width: 300px; }
   .final-score-num { font-size: 2.5rem; }
 }

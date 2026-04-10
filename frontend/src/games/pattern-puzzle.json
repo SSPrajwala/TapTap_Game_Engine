@@ -5,24 +5,216 @@
   "plugin": "puzzle",
   "version": "1.0.0",
   "questions": [
-    { "id": "p-easy-1", "type": "puzzle", "difficulty": "easy", "points": 100, "pattern": [2,4,6,8],     "sequenceLength": 2, "instruction": "What are the next 2 numbers?",          "hint": "Add 2 each time." },
-    { "id": "p-easy-2", "type": "puzzle", "difficulty": "easy", "points": 100, "pattern": [5,10,15,20],  "sequenceLength": 2, "instruction": "Continue this sequence.",               "hint": "Count by fives." },
-    { "id": "p-easy-3", "type": "puzzle", "difficulty": "easy", "points": 100, "pattern": [1,3,5,7],     "sequenceLength": 2, "instruction": "Continue the odd number pattern.",      "hint": "Add 2 each time." },
-    { "id": "p-medium-1","type": "puzzle", "difficulty": "medium","points": 200, "pattern": [3,6,9,12],  "sequenceLength": 3, "instruction": "Find the next 3 values.",               "hint": "Multiples of 3." },
-    { "id": "p-medium-2","type": "puzzle", "difficulty": "medium","points": 200, "pattern": [100,90,80,70],"sequenceLength": 2,"instruction": "Continue the descending sequence.",    "hint": "Subtract 10 each time." },
-    { "id": "p-medium-3","type": "puzzle", "difficulty": "medium","points": 200, "pattern": [7,14,21,28],"sequenceLength": 3, "instruction": "Extend this pattern by 3 numbers.",    "hint": "Multiples of 7." },
-    { "id": "p-hard-1",  "type": "puzzle", "difficulty": "hard",  "points": 400, "pattern": [1,4,9,16],  "sequenceLength": 2, "instruction": "What comes next? (tricky!)",           "hint": "Think square numbers: 1², 2², 3², 4²..." },
-    { "id": "p-hard-2",  "type": "puzzle", "difficulty": "hard",  "points": 400, "pattern": [256,128,64,32],"sequenceLength": 2,"instruction": "Continue this halving sequence.",   "hint": "Each number is halved." }
+    {
+      "id": "p-easy-1",
+      "type": "puzzle",
+      "difficulty": "easy",
+      "points": 100,
+      "pattern": [
+        2,
+        4,
+        6,
+        8
+      ],
+      "sequenceLength": 2,
+      "instruction": "What are the next 2 numbers?",
+      "hint": "Add 2 each time."
+    },
+    {
+      "id": "p-easy-2",
+      "type": "puzzle",
+      "difficulty": "easy",
+      "points": 100,
+      "pattern": [
+        5,
+        10,
+        15,
+        20
+      ],
+      "sequenceLength": 2,
+      "instruction": "Continue this sequence.",
+      "hint": "Count by fives."
+    },
+    {
+      "id": "p-easy-3",
+      "type": "puzzle",
+      "difficulty": "easy",
+      "points": 100,
+      "pattern": [
+        1,
+        3,
+        5,
+        7
+      ],
+      "sequenceLength": 2,
+      "instruction": "Continue the odd number pattern.",
+      "hint": "Add 2 each time."
+    },
+    {
+      "id": "p-medium-1",
+      "type": "puzzle",
+      "difficulty": "medium",
+      "points": 200,
+      "pattern": [
+        3,
+        6,
+        9,
+        12
+      ],
+      "sequenceLength": 3,
+      "instruction": "Find the next 3 values.",
+      "hint": "Multiples of 3."
+    },
+    {
+      "id": "p-medium-2",
+      "type": "puzzle",
+      "difficulty": "medium",
+      "points": 200,
+      "pattern": [
+        100,
+        90,
+        80,
+        70
+      ],
+      "sequenceLength": 2,
+      "instruction": "Continue the descending sequence.",
+      "hint": "Subtract 10 each time."
+    },
+    {
+      "id": "p-medium-3",
+      "type": "puzzle",
+      "difficulty": "medium",
+      "points": 200,
+      "pattern": [
+        7,
+        14,
+        21,
+        28
+      ],
+      "sequenceLength": 3,
+      "instruction": "Extend this pattern by 3 numbers.",
+      "hint": "Multiples of 7."
+    },
+    {
+      "id": "p-hard-1",
+      "type": "puzzle",
+      "difficulty": "hard",
+      "points": 400,
+      "pattern": [
+        1,
+        4,
+        9,
+        16
+      ],
+      "sequenceLength": 2,
+      "instruction": "What comes next? (tricky!)",
+      "hint": "Think square numbers: 1\u00b2, 2\u00b2, 3\u00b2, 4\u00b2..."
+    },
+    {
+      "id": "p-hard-2",
+      "type": "puzzle",
+      "difficulty": "hard",
+      "points": 400,
+      "pattern": [
+        256,
+        128,
+        64,
+        32
+      ],
+      "sequenceLength": 2,
+      "instruction": "Continue this halving sequence.",
+      "hint": "Each number is halved."
+    }
   ],
   "levels": [
-    { "id": "puzzle-l1", "title": "Easy Patterns",   "description": "Simple arithmetic sequences.", "questionIds": ["p-easy-1","p-easy-2","p-easy-3"],     "passingScore": 50 },
-    { "id": "puzzle-l2", "title": "Medium Patterns",  "description": "Longer sequences.",           "questionIds": ["p-medium-1","p-medium-2","p-medium-3"], "passingScore": 50, "unlockCondition": { "previousLevelId": "puzzle-l1", "minScore": 40 } },
-    { "id": "puzzle-l3", "title": "Hard Patterns",    "description": "Non-linear and tricky.",      "questionIds": ["p-hard-1","p-hard-2"],                  "passingScore": 60, "unlockCondition": { "previousLevelId": "puzzle-l2", "minScore": 50 } }
+    {
+      "id": "puzzle-l1",
+      "title": "Easy Patterns",
+      "description": "Simple arithmetic sequences.",
+      "questionIds": [
+        "p-easy-1",
+        "p-easy-2",
+        "p-easy-3"
+      ],
+      "passingScore": 50
+    },
+    {
+      "id": "puzzle-l2",
+      "title": "Medium Patterns",
+      "description": "Longer sequences.",
+      "questionIds": [
+        "p-medium-1",
+        "p-medium-2",
+        "p-medium-3"
+      ],
+      "passingScore": 50,
+      "unlockCondition": {
+        "previousLevelId": "puzzle-l1",
+        "minScore": 40
+      }
+    },
+    {
+      "id": "puzzle-l3",
+      "title": "Hard Patterns",
+      "description": "Non-linear and tricky.",
+      "questionIds": [
+        "p-hard-1",
+        "p-hard-2"
+      ],
+      "passingScore": 60,
+      "unlockCondition": {
+        "previousLevelId": "puzzle-l2",
+        "minScore": 50
+      }
+    }
   ],
   "adaptiveRules": [
-    { "condition": { "metric": "accuracy", "operator": ">=", "value": 0.9 }, "action": { "type": "adjustDifficulty", "payload": { "difficulty": "hard" } } },
-    { "condition": { "metric": "accuracy", "operator": "<",  "value": 0.5 }, "action": { "type": "showHint" } }
+    {
+      "condition": {
+        "metric": "accuracy",
+        "operator": ">=",
+        "value": 0.9
+      },
+      "action": {
+        "type": "adjustDifficulty",
+        "payload": {
+          "difficulty": "hard"
+        }
+      }
+    },
+    {
+      "condition": {
+        "metric": "accuracy",
+        "operator": "<",
+        "value": 0.5
+      },
+      "action": {
+        "type": "showHint"
+      }
+    }
   ],
-  "scoring": { "basePoints": 100, "timeBonus": false, "timeBonusPerSecond": 0, "streakMultiplier": true, "streakThreshold": 2, "streakMultiplierValue": 1.25 },
-  "ui": { "showTimer": false, "showProgress": true, "showStreak": true, "emoji": "🔢" }
+  "scoring": {
+    "basePoints": 100,
+    "timeBonus": false,
+    "timeBonusPerSecond": 0,
+    "streakMultiplier": true,
+    "streakThreshold": 2,
+    "streakMultiplierValue": 1.25
+  },
+  "ui": {
+    "showTimer": false,
+    "showProgress": true,
+    "showStreak": true,
+    "emoji": "\ud83d\udd22"
+  },
+  "learningOutcomes": [
+    "logical_reasoning",
+    "pattern_recognition",
+    "problem_solving"
+  ],
+  "aptitudeTags": [
+    "logical_reasoning",
+    "pattern_recognition",
+    "problem_solving"
+  ]
 }

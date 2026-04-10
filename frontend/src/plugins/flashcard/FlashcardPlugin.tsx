@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { useState } from "react"
 import type { GamePlugin, PluginRenderProps, FlashcardQuestion, Question } from "../../types/engine.types"
+import { SoundEngine } from "../../services/SoundEngine"
 const FlashcardComponent: React.FC<PluginRenderProps<FlashcardQuestion>> = ({ question, onAnswer }) => {
   const [flipped, setFlipped] = useState(false)
   const [answered, setAnswered] = useState(false)
@@ -10,6 +11,8 @@ const FlashcardComponent: React.FC<PluginRenderProps<FlashcardQuestion>> = ({ qu
   const handleAnswer = (correct: boolean) => {
     if (answered) return
     setAnswered(true)
+    if (correct) SoundEngine.correct()
+    else         SoundEngine.wrong()
     onAnswer({ questionId: question.id, correct, pointsAwarded: 0, timeTaken: 0, feedback: correct ? "Got it!" : "Keep practicing" })
   }
 
@@ -21,7 +24,7 @@ const FlashcardComponent: React.FC<PluginRenderProps<FlashcardQuestion>> = ({ qu
         {question.category && <span className="category-tag">{question.category}</span>}
       </div>
       <p className="flashcard-instruction">{flipped ? "Do you know this?" : "Tap the card to reveal the answer"}</p>
-      <div className={`flashcard${flipped ? " flipped" : ""}`} onClick={() => !answered && setFlipped(true)}>
+      <div className={`flashcard${flipped ? " flipped" : ""}`} onClick={() => { if (!answered && !flipped) { SoundEngine.cardFlip(); setFlipped(true) } }}>
         <div className="flashcard-front">
           <div className="flashcard-label">QUESTION</div>
           <div className="flashcard-text">{question.front}</div>

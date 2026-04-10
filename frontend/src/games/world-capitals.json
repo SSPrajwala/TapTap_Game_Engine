@@ -38,7 +38,7 @@
       "difficulty": "easy",
       "points": 50,
       "front": "Brazil",
-      "back": "Brasília",
+      "back": "Bras\u00edlia",
       "category": "Americas"
     },
     {
@@ -157,6 +157,14 @@
     "showTimer": false,
     "showProgress": true,
     "showStreak": true,
-    "emoji": "🗺️"
-  }
+    "emoji": "\ud83d\uddfa\ufe0f"
+  },
+  "learningOutcomes": [
+    "memory",
+    "general_knowledge"
+  ],
+  "aptitudeTags": [
+    "memory",
+    "general_knowledge"
+  ]
 }

@@ -3,9 +3,12 @@ import React, { useState, useEffect } from "react"
 export type DeerState = "idle" | "happy" | "sad" | "victory"
 
 interface Props {
-  state?:     DeerState
-  size?:      number
-  showLabel?: boolean
+  state?:      DeerState
+  /** Increment this on every trigger — forces re-animation for consecutive
+   *  same-type answers (e.g. 3 correct in a row). */
+  triggerKey?: number
+  size?:       number
+  showLabel?:  boolean
   /** Called when the mascot is clicked — used to open BlackbuckAI panel */
   onAIClick?: () => void
 }
@@ -175,13 +178,12 @@ const DeerSVG: React.FC<{ state: DeerState; size: number }> = ({ state, size }) 
   )
 }
 
-export const DeerMascot: React.FC<Props> = ({ state = "idle", size = 90, showLabel = false, onAIClick }) => {
+export const DeerMascot: React.FC<Props> = ({ state = "idle", triggerKey = 0, size = 90, showLabel = false, onAIClick }) => {
   const [currentState, setCurrentState] = useState<DeerState>(state)
 
   useEffect(() => {
-    // Intentional prop→state sync: display the incoming state then auto-reset to idle.
-    // The setTimeout means the setState inside this effect won't cascade — the second
-    // setState (idle) is deferred, not synchronous. ESLint false-positive here.
+    // triggerKey is an extra dependency — it increments on every trigger from
+    // useDeerMascot, so even consecutive same-type answers re-run this effect.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentState(state)
     if (state !== "idle") {
@@ -189,7 +191,8 @@ export const DeerMascot: React.FC<Props> = ({ state = "idle", size = 90, showLab
       const timer = setTimeout(() => setCurrentState("idle"), duration)
       return () => clearTimeout(timer)
     }
-  }, [state])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, triggerKey])
 
   // Fills: idle has a subtle tint; reactions are nearly transparent so the
   // mascot artwork is clearly visible (ring + glow carry the colour signal).

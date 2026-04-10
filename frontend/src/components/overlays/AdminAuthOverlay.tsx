@@ -64,7 +64,7 @@ export const AdminAuthOverlay: React.FC<Props> = ({ open, onClose, onSuccess }) 
       onSuccess(data.token, data.admin.name)
       onClose()
     } catch {
-      setError("Cannot reach backend. Is the server running on port 3001?")
+      setError("Cannot reach backend. Please try again later.")
     }
     setLoading(false)
   }

@@ -4,7 +4,6 @@
   "description": "Use the given letters to build as many words as you can!",
   "plugin": "wordbuilder",
   "version": "1.0.0",
-
   "questions": [
     {
       "id": "wb-easy-1",
@@ -13,11 +12,46 @@
       "points": 150,
       "timeLimit": 90,
       "instruction": "Build words using these letters. Find at least 3 words to pass!",
-      "hint": "Try 3-letter words first — cat, act, arc, car...",
-      "letters": ["C","A","R","T","E"],
-      "validWords": ["car","arc","ace","are","ear","eat","era","tar","tea","cat","act","rat","ret","ate","eta","care","race","rate","tear","acre","cart","caret","trace","crate"],
+      "hint": "Try 3-letter words first \u2014 cat, act, arc, car...",
+      "letters": [
+        "C",
+        "A",
+        "R",
+        "T",
+        "E"
+      ],
+      "validWords": [
+        "car",
+        "arc",
+        "ace",
+        "are",
+        "ear",
+        "eat",
+        "era",
+        "tar",
+        "tea",
+        "cat",
+        "act",
+        "rat",
+        "ret",
+        "ate",
+        "eta",
+        "care",
+        "race",
+        "rate",
+        "tear",
+        "acre",
+        "cart",
+        "caret",
+        "trace",
+        "crate"
+      ],
       "targetCount": 3,
-      "bonusWords": ["trace","crate","caret"]
+      "bonusWords": [
+        "trace",
+        "crate",
+        "caret"
+      ]
     },
     {
       "id": "wb-easy-2",
@@ -27,10 +61,44 @@
       "timeLimit": 90,
       "instruction": "How many words can you make from these letters?",
       "hint": "Think about common 3-letter combinations like SIT, TIN, NET...",
-      "letters": ["S","T","I","N","E"],
-      "validWords": ["sit","sin","tie","tin","net","set","ten","its","nit","stein","tines","inset","senti","stein","nest","sent","site","sine","ties","snit","anti","ante","anti"],
+      "letters": [
+        "S",
+        "T",
+        "I",
+        "N",
+        "E"
+      ],
+      "validWords": [
+        "sit",
+        "sin",
+        "tie",
+        "tin",
+        "net",
+        "set",
+        "ten",
+        "its",
+        "nit",
+        "stein",
+        "tines",
+        "inset",
+        "senti",
+        "stein",
+        "nest",
+        "sent",
+        "site",
+        "sine",
+        "ties",
+        "snit",
+        "anti",
+        "ante",
+        "anti"
+      ],
       "targetCount": 3,
-      "bonusWords": ["stein","inset","tines"]
+      "bonusWords": [
+        "stein",
+        "inset",
+        "tines"
+      ]
     },
     {
       "id": "wb-medium-1",
@@ -40,10 +108,47 @@
       "timeLimit": 75,
       "instruction": "Find at least 4 words from these letters!",
       "hint": "The letters contain a 6-letter word meaning 'to go beyond'.",
-      "letters": ["G","O","N","B","E","Y","D"],
-      "validWords": ["dog","god","bog","boy","bye","den","dye","one","yon","end","nod","ode","bode","bond","bone","bend","done","gone","node","body","boney","ebony","bogey","beyond"],
+      "letters": [
+        "G",
+        "O",
+        "N",
+        "B",
+        "E",
+        "Y",
+        "D"
+      ],
+      "validWords": [
+        "dog",
+        "god",
+        "bog",
+        "boy",
+        "bye",
+        "den",
+        "dye",
+        "one",
+        "yon",
+        "end",
+        "nod",
+        "ode",
+        "bode",
+        "bond",
+        "bone",
+        "bend",
+        "done",
+        "gone",
+        "node",
+        "body",
+        "boney",
+        "ebony",
+        "bogey",
+        "beyond"
+      ],
       "targetCount": 4,
-      "bonusWords": ["beyond","ebony","bogey"]
+      "bonusWords": [
+        "beyond",
+        "ebony",
+        "bogey"
+      ]
     },
     {
       "id": "wb-medium-2",
@@ -51,12 +156,56 @@
       "difficulty": "medium",
       "points": 250,
       "timeLimit": 75,
-      "instruction": "Build words — find at least 4 to pass.",
+      "instruction": "Build words \u2014 find at least 4 to pass.",
       "hint": "These letters can make a word meaning 'to make bright'.",
-      "letters": ["L","G","I","H","T","N","E"],
-      "validWords": ["the","hen","gel","leg","nil","tie","tin","lie","lit","hit","let","net","get","nit","lien","lien","glen","gent","hint","tile","line","lite","lent","then","thin","light","night","eight","neigh","lithe","lighten"],
+      "letters": [
+        "L",
+        "G",
+        "I",
+        "H",
+        "T",
+        "N",
+        "E"
+      ],
+      "validWords": [
+        "the",
+        "hen",
+        "gel",
+        "leg",
+        "nil",
+        "tie",
+        "tin",
+        "lie",
+        "lit",
+        "hit",
+        "let",
+        "net",
+        "get",
+        "nit",
+        "lien",
+        "lien",
+        "glen",
+        "gent",
+        "hint",
+        "tile",
+        "line",
+        "lite",
+        "lent",
+        "then",
+        "thin",
+        "light",
+        "night",
+        "eight",
+        "neigh",
+        "lithe",
+        "lighten"
+      ],
       "targetCount": 4,
-      "bonusWords": ["lighten","lithe","eight"]
+      "bonusWords": [
+        "lighten",
+        "lithe",
+        "eight"
+      ]
     },
     {
       "id": "wb-hard-1",
@@ -64,52 +213,118 @@
       "difficulty": "hard",
       "points": 400,
       "timeLimit": 60,
-      "instruction": "Advanced word building — find at least 5 words!",
+      "instruction": "Advanced word building \u2014 find at least 5 words!",
       "hint": "Think about prefixes like RE- and UN-, and common suffixes like -ED, -ING.",
-      "letters": ["S","P","R","I","N","G","E"],
-      "validWords": ["sir","sin","pig","pin","rig","rip","ring","sing","siren","prise","spine","resin","reign","pines","snipe","niger","gripe","prigs","spring","spire","sniper","spring","pinger","reigns","signer","singer"],
+      "letters": [
+        "S",
+        "P",
+        "R",
+        "I",
+        "N",
+        "G",
+        "E"
+      ],
+      "validWords": [
+        "sir",
+        "sin",
+        "pig",
+        "pin",
+        "rig",
+        "rip",
+        "ring",
+        "sing",
+        "siren",
+        "prise",
+        "spine",
+        "resin",
+        "reign",
+        "pines",
+        "snipe",
+        "niger",
+        "gripe",
+        "prigs",
+        "spring",
+        "spire",
+        "sniper",
+        "spring",
+        "pinger",
+        "reigns",
+        "signer",
+        "singer"
+      ],
       "targetCount": 5,
-      "bonusWords": ["spring","sniper","signer","singer"]
+      "bonusWords": [
+        "spring",
+        "sniper",
+        "signer",
+        "singer"
+      ]
     }
   ],
-
   "levels": [
     {
       "id": "wb-l1",
       "title": "Easy Words",
-      "description": "Short letters set — 3 words needed.",
-      "questionIds": ["wb-easy-1", "wb-easy-2"],
+      "description": "Short letters set \u2014 3 words needed.",
+      "questionIds": [
+        "wb-easy-1",
+        "wb-easy-2"
+      ],
       "passingScore": 40
     },
     {
       "id": "wb-l2",
       "title": "Medium Words",
-      "description": "Bigger letters set — 4 words needed.",
-      "questionIds": ["wb-medium-1", "wb-medium-2"],
+      "description": "Bigger letters set \u2014 4 words needed.",
+      "questionIds": [
+        "wb-medium-1",
+        "wb-medium-2"
+      ],
       "passingScore": 40,
-      "unlockCondition": { "previousLevelId": "wb-l1", "minScore": 30 }
+      "unlockCondition": {
+        "previousLevelId": "wb-l1",
+        "minScore": 30
+      }
     },
     {
       "id": "wb-l3",
       "title": "Hard Words",
-      "description": "7 letters — 5 words needed. Can you find the bonus words?",
-      "questionIds": ["wb-hard-1"],
+      "description": "7 letters \u2014 5 words needed. Can you find the bonus words?",
+      "questionIds": [
+        "wb-hard-1"
+      ],
       "passingScore": 50,
-      "unlockCondition": { "previousLevelId": "wb-l2", "minScore": 40 }
+      "unlockCondition": {
+        "previousLevelId": "wb-l2",
+        "minScore": 40
+      }
     }
   ],
-
   "adaptiveRules": [
     {
-      "condition": { "metric": "accuracy", "operator": ">=", "value": 0.8 },
-      "action": { "type": "adjustDifficulty", "payload": { "difficulty": "hard" } }
+      "condition": {
+        "metric": "accuracy",
+        "operator": ">=",
+        "value": 0.8
+      },
+      "action": {
+        "type": "adjustDifficulty",
+        "payload": {
+          "difficulty": "hard"
+        }
+      }
     },
     {
-      "condition": { "metric": "accuracy", "operator": "<", "value": 0.5 },
-      "action": { "type": "showHint" }
+      "condition": {
+        "metric": "accuracy",
+        "operator": "<",
+        "value": 0.5
+      },
+      "action": {
+        "type": "showHint"
+      }
     }
   ],
-
   "scoring": {
     "basePoints": 150,
     "timeBonus": true,
@@ -118,11 +333,18 @@
     "streakThreshold": 2,
     "streakMultiplierValue": 1.25
   },
-
   "ui": {
     "showTimer": true,
     "showProgress": true,
     "showStreak": true,
-    "emoji": "📝"
-  }
+    "emoji": "\ud83d\udcdd"
+  },
+  "learningOutcomes": [
+    "vocabulary",
+    "verbal_ability"
+  ],
+  "aptitudeTags": [
+    "vocabulary",
+    "verbal_ability"
+  ]
 }

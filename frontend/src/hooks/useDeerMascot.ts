@@ -1,15 +1,29 @@
-import { useState, useCallback } from "react"
+import { useState, useCallback, useRef } from "react"
 import type { DeerState } from "../components/ui/DeerMascot"
 
 export function useDeerMascot() {
-  const [deerState, setDeerState] = useState<DeerState>("idle")
+  const [deerState,  setDeerState]  = useState<DeerState>("idle")
+  // triggerKey increments on every trigger — DeerMascot watches it as an
+  // extra useEffect dependency so even consecutive same-type answers
+  // (e.g. 3 correct in a row) re-run the animation each time.
+  const [triggerKey, setTriggerKey] = useState(0)
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // useCallback ensures stable refs so GameRenderer's engine.on useEffect
-  // doesn't re-register listeners on every render
-  const triggerCorrect = useCallback(() => setDeerState("happy"),  [])
-  const triggerWrong   = useCallback(() => setDeerState("sad"),    [])
-  const triggerVictory = useCallback(() => setDeerState("victory"), [])
-  const triggerIdle = () => setDeerState("idle")
+  const fire = useCallback((s: DeerState, ms: number) => {
+    // Cancel any pending auto-reset so state doesn't flicker mid-animation
+    if (resetTimer.current) clearTimeout(resetTimer.current)
+    setDeerState(s)
+    setTriggerKey(k => k + 1)           // force DeerMascot useEffect to re-run
+    resetTimer.current = setTimeout(() => setDeerState("idle"), ms)
+  }, [])
 
-  return { deerState, triggerCorrect, triggerWrong, triggerVictory, triggerIdle }
+  const triggerCorrect = useCallback(() => fire("happy",   1300), [fire])
+  const triggerWrong   = useCallback(() => fire("sad",     1000), [fire])
+  const triggerVictory = useCallback(() => fire("victory", 2100), [fire])
+  const triggerIdle    = useCallback(() => {
+    if (resetTimer.current) clearTimeout(resetTimer.current)
+    setDeerState("idle")
+  }, [])
+
+  return { deerState, triggerKey, triggerCorrect, triggerWrong, triggerVictory, triggerIdle }
 }

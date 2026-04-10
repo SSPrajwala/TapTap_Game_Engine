@@ -155,10 +155,12 @@ export function useMultiplayerRoom() {
 
     const onUpdated = ({ room: r }: { room: RoomState }) => {
       setRoom(r)
+      roomCodeRef.current = r.code   // keep ref in sync (needed after restoreRoom)
       // Sync phase with room status changes
       if (r.status === "ended")    setPhase("ended")
       if (r.status === "playing")  setPhase(prev => prev === "lobby" || prev === "countdown" ? "playing" : prev)
-      if (r.status === "waiting")  setPhase(prev => prev !== "idle" && prev !== "connecting" ? "lobby" : prev)
+      // Allow idle/connecting → lobby so restoreRoom (Live Room redirect) works
+      if (r.status === "waiting")  setPhase(prev => prev === "playing" || prev === "countdown" || prev === "ended" ? prev : "lobby")
     }
 
     const onError = ({ message }: { message: string }) => setError(message)
@@ -280,6 +282,22 @@ export function useMultiplayerRoom() {
     })
   }, [])
 
+  // ── Restore into an existing room (used when redirected from Live Room) ──────
+  // Sets the room code ref and emits room:sync so the server sends back room:updated,
+  // which transitions phase from idle → lobby automatically.
+  const restoreRoom = useCallback((code: string) => {
+    roomCodeRef.current = code
+    setError(null)
+    setPhase("connecting")
+    const s = getSocket()
+    connectSocket()            // no-op if already connected
+    if (s.connected) {
+      s.emit("room:sync")
+    }
+    // If not yet connected, onConnect will fire room:sync once connected
+    // (roomCodeRef.current is already set, so the onConnect handler will emit it)
+  }, [])
+
   const leaveRoom = useCallback(() => {
     getSocket().emit("room:leave")
     disconnectSocket()
@@ -311,6 +329,7 @@ export function useMultiplayerRoom() {
     connect,
     createRoom,
     joinRoom,
+    restoreRoom,
     setReady,
     selectGame,
     startGame,

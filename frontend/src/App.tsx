@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react"
+import { QRChallengeCard } from "./components/ui/QRChallengeCard"
 import logoSrc                        from "./assets/logo.png"
 import { AuthProvider, useAuth }      from "./context/AuthContext"
 import { GameRenderer }               from "./components/GameRenderer"
@@ -19,6 +20,8 @@ import { AdminAuthOverlay }           from "./components/overlays/AdminAuthOverl
 import { MultiplayerPage }            from "./pages/MultiplayerPage"
 import { SkillsDashboard }            from "./pages/SkillsDashboard"
 import { EngineShowcase }             from "./pages/EngineShowcase"
+import { CEOPanel }                   from "./pages/CEOPanel"
+import { LiveRoomPage }               from "./pages/LiveRoomPage"
 import { useBoardMode }               from "./hooks/useBoardMode"
 import type { GameConfig }            from "./types/engine.types"
 import { getGameSkills, skillLabel, skillColor } from "./utils/GameSkillMapper"
@@ -37,7 +40,7 @@ import "./styles.css"
 
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:3001/api"
 
-type Page    = "library" | "game" | "leaderboard" | "admin" | "multiplayer" | "skills" | "engine"
+type Page    = "library" | "game" | "leaderboard" | "admin" | "multiplayer" | "skills" | "engine" | "ceo" | "liveroom"
 type Overlay = "about" | "docs" | "signin" | "profile" | "adminAuth" | null
 
 // Static fallback games (used until backend responds)
@@ -98,10 +101,24 @@ function AppInner() {
   const [overlay,      setOverlay]      = useState<Overlay>(null)
   const [aiOpen,       setAiOpen]       = useState(false)
 
+  // Live Room → Multiplayer redirect: stores room code to auto-join
+  const [pendingLiveCode, setPendingLiveCode] = useState<string | null>(null)
+
   // Admin auth
   const [adminToken, setAdminToken] = useState<string | null>(null)
   const [adminName,  setAdminName]  = useState<string>("")
   const isAdmin = adminToken !== null
+
+  // ── CEO Easter-egg trigger — click logo 5 times within 2 seconds ──────────
+  const logoClickTimesRef = React.useRef<number[]>([])
+  const handleLogoClick = () => {
+    const now = Date.now()
+    logoClickTimesRef.current = [...logoClickTimesRef.current, now].filter(t => now - t < 2000)
+    if (logoClickTimesRef.current.length >= 5) {
+      logoClickTimesRef.current = []
+      setPage("ceo")
+    }
+  }
 
   // ── Games — public always + user's private when logged in ──────────────────
   const [publicGames, setPublicGames] = useState<GameConfig[]>(STATIC_GAMES)
@@ -126,7 +143,7 @@ function AppInner() {
 
   useEffect(() => { loadGames() }, [loadGames])
 
-  const { deerState, triggerCorrect, triggerWrong, triggerVictory } = useDeerMascot()
+  const { deerState, triggerKey, triggerCorrect, triggerWrong, triggerVictory } = useDeerMascot()
   const { boardMode, toggleBoardMode, enterBoardMode } = useBoardMode()
 
   const allGames = useMemo(() => [...publicGames, ...myGames], [publicGames, myGames])
@@ -253,6 +270,11 @@ function AppInner() {
         onClose={() => setAiOpen(false)}
         onGameGenerated={isLoggedIn ? handleGameGenerated : undefined}
         onPublishGame={isAdmin ? handlePublishGame : undefined}
+        onPlayGame={(config) => {
+          setActiveGame(config as unknown as GameConfig)
+          setPage("game")
+          setAiOpen(false)
+        }}
         isAdmin={isAdmin}
       />
     </>
@@ -300,7 +322,7 @@ function AppInner() {
             onVictory={triggerVictory}
           />
         </div>
-        {!boardMode && <DeerMascot state={deerState} showLabel onAIClick={() => setAiOpen(true)} />}
+        {!boardMode && <DeerMascot state={deerState} triggerKey={triggerKey} showLabel onAIClick={() => setAiOpen(true)} />}
         {overlays}
       </div>
     )
@@ -313,7 +335,11 @@ function AppInner() {
         <HexBackground />
         <TopRibbon {...ribbonProps} />
         <div className="app-shell" style={{ paddingTop: "20px" }}>
-          <MultiplayerPage games={allGames} onBack={() => setPage("library")} />
+          <MultiplayerPage
+            games={allGames}
+            onBack={() => { setPendingLiveCode(null); setPage("library") }}
+            pendingRoomCode={pendingLiveCode ?? undefined}
+          />
         </div>
         <DeerMascot state="idle" size={80} onAIClick={() => setAiOpen(true)} />
         {overlays}
@@ -361,6 +387,40 @@ function AppInner() {
           <EngineShowcase games={allGames} onBack={() => setPage("library")} />
         </div>
         {overlays}
+      </div>
+    )
+  }
+
+  // ── Live Room page ─────────────────────────────────────────────────────────
+  if (page === "liveroom") {
+    return (
+      <div style={{ minHeight: "100vh" }}>
+        <HexBackground />
+        <TopRibbon {...ribbonProps} />
+        <div className="app-shell" style={{ paddingTop: "20px" }}>
+          <LiveRoomPage
+            games={allGames}
+            onBack={() => setPage("library")}
+            onJoinRoom={(roomCode) => {
+              setPendingLiveCode(roomCode)
+              setPage("multiplayer")
+            }}
+          />
+        </div>
+        <DeerMascot state="idle" size={80} onAIClick={() => setAiOpen(true)} />
+        {overlays}
+      </div>
+    )
+  }
+
+  // ── CEO Control Room (hidden — reached via 5-click logo Easter egg) ────────
+  if (page === "ceo") {
+    return (
+      <div style={{ minHeight: "100vh" }}>
+        <HexBackground />
+        <div className="app-shell" style={{ paddingTop: "20px" }}>
+          <CEOPanel onBack={() => setPage("library")} />
+        </div>
       </div>
     )
   }
@@ -416,7 +476,9 @@ function AppInner() {
       <div className="app-shell" style={{ flex: 1, paddingTop: boardMode ? "64px" : "24px" }}>
         <header className="app-header animate-in" style={{ marginBottom: "28px" }}>
           <div className="app-logo-mark">
-            <AppLogoImg />
+            <div onClick={handleLogoClick} style={{ cursor: "default", userSelect: "none" }} title="">
+              <AppLogoImg />
+            </div>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "2px" }}>
               <h1 style={{ fontFamily: "Orbitron, monospace", margin: 0 }}>
                 Tap Tap{" "}
@@ -476,6 +538,16 @@ function AppInner() {
         <nav className="app-nav animate-in stagger-1">
           <button className="nav-btn nav-btn-active">🎮 Games</button>
           <button className="nav-btn" onClick={() => setPage("multiplayer")}>🌐 Multiplayer</button>
+          <button className="nav-btn" onClick={() => setPage("liveroom")} style={{ position: "relative" }}>
+            🟢 Live Room
+            <span style={{
+              position: "absolute", top: "4px", right: "6px",
+              width: "7px", height: "7px", borderRadius: "50%",
+              background: "#22FFAA",
+              boxShadow: "0 0 6px #22FFAA",
+              animation: "pulse 1.5s infinite",
+            }} />
+          </button>
           <button className="nav-btn" onClick={() => setPage("leaderboard")}>🏆 Leaderboard</button>
           {isLoggedIn && (
             <button className="nav-btn" onClick={() => setPage("skills")}>📊 My Skills</button>
@@ -609,6 +681,7 @@ function AppInner() {
 
       <DeerMascot
         state={deerState}
+        triggerKey={triggerKey}
         showLabel
         size={85}
         onAIClick={isLoggedIn ? () => setAiOpen(true) : undefined}
@@ -629,6 +702,8 @@ function GameGrid({
   searchQuery?:     string
   showPrivateBadge?: boolean
 }) {
+  const [qrGame, setQrGame] = useState<GameConfig | null>(null)
+
   if (games.length === 0 && searchQuery) {
     return (
       <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "48px", color: "rgba(232,224,255,0.3)", fontFamily: "Orbitron, monospace", fontSize: "0.88rem" }}>
@@ -638,6 +713,7 @@ function GameGrid({
   }
 
   return (
+    <>
     <div className="game-library">
       {games.map((game, i) => (
         <div
@@ -718,6 +794,21 @@ function GameGrid({
               <span>❓ {(game.questions ?? []).length} questions</span>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              {/* QR Challenge Card button */}
+              <button
+                title="Get QR Challenge Card — share or print to invite others"
+                onClick={e => { e.stopPropagation(); setQrGame(game) }}
+                style={{
+                  background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.25)",
+                  borderRadius: 8, padding: "6px 10px", cursor: "pointer",
+                  color: "#C084FC", fontSize: "0.75rem",
+                }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                  <rect x="3" y="14" width="7" height="7"/>
+                  <path d="M14 14h.01M14 17h.01M17 14h.01M17 17h.01M17 20h.01M20 14h.01M20 17h.01M20 20h.01"/>
+                </svg>
+              </button>
               {onBoardPlay && (
                 <button
                   title="Launch in Board Mode (fullscreen for smartboards)"
@@ -740,6 +831,9 @@ function GameGrid({
         </div>
       ))}
     </div>
+    {/* QR Challenge Card modal */}
+    {qrGame && <QRChallengeCard game={qrGame} onClose={() => setQrGame(null)} />}
+    </>
   )
 }
 

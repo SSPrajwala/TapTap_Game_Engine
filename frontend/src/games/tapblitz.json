@@ -5,7 +5,7 @@
   "plugin": "tapblitz",
   "version": "1.0.0",
   "ui": {
-    "emoji": "⚡",
+    "emoji": "\u26a1",
     "showTimer": true,
     "showProgress": true,
     "showStreak": true,
@@ -25,7 +25,7 @@
       "type": "tapblitz",
       "difficulty": "easy",
       "points": 500,
-      "instruction": "Warm Up — Click the targets!",
+      "instruction": "Warm Up \u2014 Click the targets!",
       "duration": 30,
       "spawnRate": 1.2,
       "targetLifetime": 3.5,
@@ -39,7 +39,7 @@
       "type": "tapblitz",
       "difficulty": "easy",
       "points": 700,
-      "instruction": "Picking Up Speed…",
+      "instruction": "Picking Up Speed\u2026",
       "duration": 30,
       "spawnRate": 1.8,
       "targetLifetime": 3.0,
@@ -53,7 +53,7 @@
       "type": "tapblitz",
       "difficulty": "medium",
       "points": 1000,
-      "instruction": "Medium — Stay focused!",
+      "instruction": "Medium \u2014 Stay focused!",
       "duration": 35,
       "spawnRate": 2.2,
       "targetLifetime": 2.5,
@@ -67,7 +67,7 @@
       "type": "tapblitz",
       "difficulty": "medium",
       "points": 1200,
-      "instruction": "Medium+ — Targets are faster!",
+      "instruction": "Medium+ \u2014 Targets are faster!",
       "duration": 35,
       "spawnRate": 2.6,
       "targetLifetime": 2.2,
@@ -81,7 +81,7 @@
       "type": "tapblitz",
       "difficulty": "hard",
       "points": 1500,
-      "instruction": "Hard — Maximum intensity!",
+      "instruction": "Hard \u2014 Maximum intensity!",
       "duration": 40,
       "spawnRate": 3.2,
       "targetLifetime": 1.8,
@@ -95,7 +95,7 @@
       "type": "tapblitz",
       "difficulty": "hard",
       "points": 2000,
-      "instruction": "Elite — Tiny targets, blazing speed!",
+      "instruction": "Elite \u2014 Tiny targets, blazing speed!",
       "duration": 45,
       "spawnRate": 4.0,
       "targetLifetime": 1.5,
@@ -109,39 +109,89 @@
     {
       "id": "tapblitz-level-1",
       "title": "Rookie Range",
-      "description": "Learn the ropes — slow targets, generous timing",
-      "questionIds": ["tb-wave-1", "tb-wave-2"],
+      "description": "Learn the ropes \u2014 slow targets, generous timing",
+      "questionIds": [
+        "tb-wave-1",
+        "tb-wave-2"
+      ],
       "passingScore": 600
     },
     {
       "id": "tapblitz-level-2",
       "title": "Sharpshooter",
-      "description": "Faster targets, tighter windows — build your combo",
-      "questionIds": ["tb-wave-3", "tb-wave-4"],
+      "description": "Faster targets, tighter windows \u2014 build your combo",
+      "questionIds": [
+        "tb-wave-3",
+        "tb-wave-4"
+      ],
       "passingScore": 1400,
-      "unlockCondition": { "previousLevelId": "tapblitz-level-1", "minScore": 600 }
+      "unlockCondition": {
+        "previousLevelId": "tapblitz-level-1",
+        "minScore": 600
+      }
     },
     {
       "id": "tapblitz-level-3",
       "title": "Blitz Master",
-      "description": "Elite difficulty — only the fastest survive",
-      "questionIds": ["tb-wave-5", "tb-wave-6"],
+      "description": "Elite difficulty \u2014 only the fastest survive",
+      "questionIds": [
+        "tb-wave-5",
+        "tb-wave-6"
+      ],
       "passingScore": 2200,
-      "unlockCondition": { "previousLevelId": "tapblitz-level-2", "minScore": 1400 }
+      "unlockCondition": {
+        "previousLevelId": "tapblitz-level-2",
+        "minScore": 1400
+      }
     }
   ],
   "adaptiveRules": [
     {
-      "condition": { "metric": "accuracy", "operator": ">=", "value": 0.85 },
-      "action": { "type": "adjustDifficulty", "payload": { "difficulty": "hard" } }
+      "condition": {
+        "metric": "accuracy",
+        "operator": ">=",
+        "value": 0.85
+      },
+      "action": {
+        "type": "adjustDifficulty",
+        "payload": {
+          "difficulty": "hard"
+        }
+      }
     },
     {
-      "condition": { "metric": "accuracy", "operator": "<", "value": 0.35 },
-      "action": { "type": "adjustDifficulty", "payload": { "difficulty": "easy" } }
+      "condition": {
+        "metric": "accuracy",
+        "operator": "<",
+        "value": 0.35
+      },
+      "action": {
+        "type": "adjustDifficulty",
+        "payload": {
+          "difficulty": "easy"
+        }
+      }
     },
     {
-      "condition": { "metric": "streak", "operator": ">=", "value": 5 },
-      "action": { "type": "awardBonus", "payload": { "points": 250 } }
+      "condition": {
+        "metric": "streak",
+        "operator": ">=",
+        "value": 5
+      },
+      "action": {
+        "type": "awardBonus",
+        "payload": {
+          "points": 250
+        }
+      }
     }
+  ],
+  "learningOutcomes": [
+    "focus",
+    "attention_to_detail"
+  ],
+  "aptitudeTags": [
+    "focus",
+    "attention_to_detail"
   ]
 }

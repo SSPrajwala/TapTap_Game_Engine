@@ -25,6 +25,7 @@ import type {
   AnswerResult,
 } from "../../types/engine.types"
 import { HowToPlayModal, HelpButton } from "../../components/ui/HowToPlayModal"
+import { SoundEngine } from "../../services/SoundEngine"
 
 const TB_HOW_TO_STEPS = [
   { icon: "🎯", title: "Click Targets",   desc: "Coloured circles appear on the canvas and slowly drift around. Click or tap them before they disappear to score points." },
@@ -233,6 +234,10 @@ const TapBlitzComponent: React.FC<PluginRenderProps<TapBlitzQuestion>> = ({
         g.score += pts
         g.hits++
 
+        // Sound: streak milestone at 5/10/20, else regular hit
+        if (g.combo === 5 || g.combo === 10 || g.combo === 20) SoundEngine.streak()
+        else SoundEngine.runnerHit()
+
         setWaveScore(g.score)
         setWaveHits(g.hits)
         setWaveCombo(g.combo)
@@ -259,6 +264,8 @@ const TapBlitzComponent: React.FC<PluginRenderProps<TapBlitzQuestion>> = ({
     setWaveEnded(true)
 
     const correct = g.hits > g.misses
+    if (correct) SoundEngine.levelComplete()
+    else         SoundEngine.wrong()
     const result: AnswerResult = {
       questionId:    question.id,
       correct,

@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { useState, useRef } from "react"
 import type { GamePlugin, PluginRenderProps, MemoryQuestion, Question } from "../../types/engine.types"
+import { SoundEngine } from "../../services/SoundEngine"
 
 interface CardState { id: string; pairId: string; label: string; emoji: string; flipped: boolean; matched: boolean }
 
@@ -35,6 +36,7 @@ const MemoryComponent: React.FC<PluginRenderProps<MemoryQuestion>> = ({ question
     if (selected.includes(cardId)) return
 
     const newSelected = [...selected, cardId]
+    SoundEngine.cardFlip()
     setCards(prev => prev.map(c => c.id === cardId ? { ...c, flipped: true } : c))
 
     if (newSelected.length === 2) {
@@ -43,14 +45,17 @@ const MemoryComponent: React.FC<PluginRenderProps<MemoryQuestion>> = ({ question
       setSelected([])
       const [a, b] = newSelected.map(id => cards.find(c => c.id === id)!)
       if (a.pairId === b.pairId) {
+        SoundEngine.pairMatch()
         setCards(prev => prev.map(c => newSelected.includes(c.id) ? { ...c, matched: true } : c))
         lockRef.current = false
         const allMatched = cards.filter(c => !newSelected.includes(c.id)).every(c => c.matched)
         if (allMatched) {
+          SoundEngine.levelComplete()
           setDone(true)
           onAnswer({ questionId: question.id, correct: true, pointsAwarded: 0, timeTaken: 0, feedback: `Matched all in ${moves + 1} moves!` })
         }
       } else {
+        SoundEngine.wrong()
         setTimeout(() => {
           setCards(prev => prev.map(c => newSelected.includes(c.id) ? { ...c, flipped: false } : c))
           lockRef.current = false

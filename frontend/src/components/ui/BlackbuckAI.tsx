@@ -6,6 +6,15 @@
 import React, { useState, useRef, useEffect, useCallback } from "react"
 import { AIService } from "../../services/AIService"
 import type { MascotMessage, SkillReport } from "../../services/AIService"
+
+type GenType = "quiz" | "flashcard" | "puzzle" | "memory" | "wordbuilder"
+const GEN_TYPES: { id: GenType; icon: string; label: string; desc: string; aptitude: string }[] = [
+  { id: "quiz",        icon: "❓", label: "Quiz",        desc: "MCQ with adaptive difficulty", aptitude: "Reasoning · Domain" },
+  { id: "flashcard",   icon: "🃏", label: "Flashcard",   desc: "Flip-card learning decks",     aptitude: "Memory · Recall" },
+  { id: "puzzle",      icon: "🔢", label: "Puzzle",      desc: "Pattern & sequence problems",  aptitude: "Pattern Recognition" },
+  { id: "memory",      icon: "🧩", label: "Memory",      desc: "Emoji pair-matching game",     aptitude: "Attention · Memory" },
+  { id: "wordbuilder", icon: "📝", label: "Word Builder", desc: "Anagram-style vocabulary",    aptitude: "Verbal Ability" },
+]
 import { useAuth } from "../../context/AuthContext"
 
 interface Props {
@@ -22,6 +31,8 @@ interface Props {
   onGameGenerated?: (config: Record<string, unknown>) => void
   /** Called when ADMIN publishes game to all users (global library) */
   onPublishGame?: (config: Record<string, unknown>) => void
+  /** Called to immediately launch the generated game — no login required */
+  onPlayGame?: (config: Record<string, unknown>) => void
   /** True if current user is admin */
   isAdmin?: boolean
 }
@@ -42,17 +53,18 @@ const QUICK_QUESTIONS = [
   "What aptitude topics should I focus on for TCS NQT?",
 ]
 
-export const BlackbuckAI: React.FC<Props> = ({ isOpen, onClose, explainContext, onGameGenerated, onPublishGame, isAdmin }) => {
+export const BlackbuckAI: React.FC<Props> = ({ isOpen, onClose, explainContext, onGameGenerated, onPublishGame, onPlayGame, isAdmin }) => {
   const { token, user } = useAuth()
   const [tab,         setTab]         = useState<Tab>("chat")
   const [messages,    setMessages]    = useState<ChatMsg[]>([])
   const [input,       setInput]       = useState("")
   const [loading,     setLoading]     = useState(false)
   const [genTopic,    setGenTopic]    = useState("")
-  const [genType,     setGenType]     = useState<"quiz" | "flashcard">("quiz")
+  const [genType,     setGenType]     = useState<GenType>("quiz")
   const [genCount,    setGenCount]    = useState(10)
   const [genLoading,  setGenLoading]  = useState(false)
   const [genResult,   setGenResult]   = useState<Record<string, unknown> | null>(null)
+  const [genError,    setGenError]    = useState<string | null>(null)
   const [report,      setReport]      = useState<SkillReport | null>(null)
   const [reportLoading, setReportLoading] = useState(false)
 
@@ -124,17 +136,39 @@ export const BlackbuckAI: React.FC<Props> = ({ isOpen, onClose, explainContext, 
   }, [input, token, loading, messages])
 
   const generateGame = useCallback(async () => {
-    if (!token || !genTopic.trim() || genLoading) return
+    if (!genTopic.trim() || genLoading) return
+    if (!token) {
+      setGenError("You need to be signed in to generate games. Sign in from the top ribbon.")
+      return
+    }
     setGenLoading(true)
     setGenResult(null)
+    setGenError(null)
     try {
-      const result = genType === "quiz"
-        ? await AIService.generateQuiz(token, { topic: genTopic, questionCount: genCount, targetCompany: user?.profile?.targetCompany ?? undefined })
-        : await AIService.generateFlashcard(token, { topic: genTopic, cardCount: genCount })
+      let result: { generationId: string; config: Record<string, unknown> }
+      switch (genType) {
+        case "quiz":
+          result = await AIService.generateQuiz(token, { topic: genTopic, questionCount: genCount, targetCompany: user?.profile?.targetCompany ?? undefined })
+          break
+        case "flashcard":
+          result = await AIService.generateFlashcard(token, { topic: genTopic, cardCount: genCount })
+          break
+        case "puzzle":
+          result = await AIService.generatePuzzle(token, { topic: genTopic, questionCount: genCount })
+          break
+        case "memory":
+          result = await AIService.generateMemory(token, { topic: genTopic, pairCount: Math.min(genCount, 8) })
+          break
+        case "wordbuilder":
+          result = await AIService.generateWordBuilder(token, { topic: genTopic, wordCount: Math.min(genCount, 6) })
+          break
+        default:
+          result = await AIService.generateQuiz(token, { topic: genTopic, questionCount: genCount })
+      }
       setGenResult(result.config)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Generation failed. Please try again."
-      alert(msg)
+      setGenError(msg)
     } finally {
       setGenLoading(false)
     }
@@ -309,48 +343,85 @@ export const BlackbuckAI: React.FC<Props> = ({ isOpen, onClose, explainContext, 
 
           {/* ── GENERATE TAB ── */}
           {tab === "generate" && (
-            <div style={{ padding: "20px", overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: "16px" }}>
-              <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.82rem", lineHeight: 1.5 }}>
-                Generate a custom game and save it to <strong style={{ color: "#00D4FF" }}>My Games</strong>. Only you can see it!
+            <div style={{ padding: "16px", overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: "14px" }}>
+              <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.78rem", lineHeight: 1.5 }}>
+                Generate any game type with AI and save to <strong style={{ color: "#00D4FF" }}>My Games</strong>. Tied to real aptitude skills!
               </div>
 
-              {/* Type */}
+              {/* Game type grid */}
               <div>
                 <label style={labelStyle}>Game Type</label>
-                <div style={{ display: "flex", gap: "8px", marginTop: "6px" }}>
-                  {(["quiz", "flashcard"] as const).map(t => (
-                    <button key={t} onClick={() => setGenType(t)} style={{
-                      flex: 1, padding: "10px",
-                      background: genType === t ? "rgba(0,212,255,0.2)" : "rgba(255,255,255,0.05)",
-                      border: `1px solid ${genType === t ? "#00D4FF" : "rgba(255,255,255,0.1)"}`,
-                      borderRadius: "10px", color: genType === t ? "#00D4FF" : "rgba(255,255,255,0.6)",
-                      fontFamily: "Orbitron, monospace", fontSize: "0.72rem",
-                      fontWeight: 700, cursor: "pointer", textTransform: "uppercase",
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", marginTop: "6px" }}>
+                  {GEN_TYPES.map(t => (
+                    <button key={t.id} onClick={() => setGenType(t.id)} style={{
+                      padding: "8px 10px", textAlign: "left",
+                      background: genType === t.id ? "rgba(0,212,255,0.18)" : "rgba(255,255,255,0.04)",
+                      border: `1px solid ${genType === t.id ? "#00D4FF" : "rgba(255,255,255,0.1)"}`,
+                      borderRadius: "10px", cursor: "pointer",
+                      transition: "all 0.15s",
                     }}>
-                      {t === "quiz" ? "⚡ Quiz" : "📇 Flashcard"}
+                      <div style={{ fontSize: "1.1rem", marginBottom: "2px" }}>{t.icon}</div>
+                      <div style={{ color: genType === t.id ? "#00D4FF" : "rgba(255,255,255,0.75)", fontFamily: "Orbitron, monospace", fontSize: "0.62rem", fontWeight: 700 }}>
+                        {t.label}
+                      </div>
+                      <div style={{ color: "rgba(255,255,255,0.35)", fontSize: "0.62rem", marginTop: "1px" }}>
+                        {t.aptitude}
+                      </div>
                     </button>
                   ))}
+                </div>
+                {/* Selected type desc */}
+                <div style={{ marginTop: "6px", fontSize: "0.72rem", color: "#00D4FF", fontStyle: "italic" }}>
+                  {GEN_TYPES.find(t => t.id === genType)?.desc}
                 </div>
               </div>
 
               {/* Topic */}
               <div>
-                <label style={labelStyle}>Topic</label>
+                <label style={labelStyle}>Topic / Subject</label>
                 <input
                   value={genTopic}
                   onChange={e => setGenTopic(e.target.value)}
-                  placeholder={`e.g. "Binary Trees", "Probability", "English Vocabulary"`}
+                  onKeyDown={e => e.key === "Enter" && generateGame()}
+                  placeholder={
+                    genType === "quiz"        ? `e.g. "Binary Trees", "Profit & Loss"` :
+                    genType === "flashcard"   ? `e.g. "Networking terms", "Data structures"` :
+                    genType === "puzzle"      ? `e.g. "Arithmetic series", "Number theory"` :
+                    genType === "memory"      ? `e.g. "Programming languages", "Countries"` :
+                                               `e.g. "Algorithms", "Chemistry", "Sports"`
+                  }
                   style={inputStyle}
                 />
               </div>
 
-              {/* Count */}
+              {/* Count — label changes per type */}
               <div>
-                <label style={labelStyle}>Number of Questions: {genCount}</label>
-                <input type="range" min={5} max={20} value={genCount}
+                <label style={labelStyle}>
+                  {genType === "wordbuilder" ? `Rounds: ${Math.min(genCount, 6)}` :
+                   genType === "memory"      ? `Rounds: ${Math.min(genCount, 8)}` :
+                                              `Questions / Cards: ${genCount}`}
+                </label>
+                <input type="range"
+                  min={genType === "wordbuilder" ? 2 : genType === "memory" ? 3 : 5}
+                  max={genType === "wordbuilder" ? 6 : genType === "memory" ? 8 : 20}
+                  value={genCount}
                   onChange={e => setGenCount(Number(e.target.value))}
                   style={{ width: "100%", accentColor: "#00D4FF", marginTop: "6px" }}
                 />
+              </div>
+
+              {/* Aptitude target hint */}
+              <div style={{
+                background: "rgba(168,85,247,0.08)", border: "1px solid rgba(168,85,247,0.2)",
+                borderRadius: "8px", padding: "8px 12px", fontSize: "0.72rem",
+                color: "rgba(232,224,255,0.6)", lineHeight: 1.5,
+              }}>
+                🎯 <strong style={{ color: "#A855F7" }}>Learning outcome:</strong>{" "}
+                {genType === "quiz"        ? "Reasoning, domain knowledge, placement aptitude" :
+                 genType === "flashcard"   ? "Memory retention, concept recall, spaced repetition" :
+                 genType === "puzzle"      ? "Pattern recognition, logical reasoning (TCS/Wipro style)" :
+                 genType === "memory"      ? "Attention to detail, visual memory, focus" :
+                                            "Verbal ability, vocabulary, English aptitude"}
               </div>
 
               <button
@@ -364,26 +435,71 @@ export const BlackbuckAI: React.FC<Props> = ({ isOpen, onClose, explainContext, 
                   cursor: genLoading || !genTopic.trim() ? "not-allowed" : "pointer",
                 }}
               >
-                {genLoading ? "🤖 Generating..." : "⚡ Generate Game"}
+                {genLoading ? `🤖 Generating ${GEN_TYPES.find(t=>t.id===genType)?.label}...` : `⚡ Generate ${GEN_TYPES.find(t=>t.id===genType)?.label}`}
               </button>
 
-              {/* Result */}
-              {genResult && (
+              {/* Error state */}
+              {genError && (
                 <div style={{
-                  background: "rgba(34,255,170,0.08)", border: "1px solid rgba(34,255,170,0.3)",
+                  background: "rgba(255,45,120,0.08)", border: "1px solid rgba(255,45,120,0.3)",
+                  borderRadius: "10px", padding: "12px 14px",
+                  display: "flex", alignItems: "flex-start", gap: "10px",
+                }}>
+                  <span style={{ fontSize: "1.1rem", flexShrink: 0 }}>⚠️</span>
+                  <div>
+                    <div style={{ color: "#FF6090", fontFamily: "Exo 2, sans-serif", fontWeight: 700, fontSize: "0.78rem", marginBottom: "4px" }}>
+                      Generation failed
+                    </div>
+                    <div style={{ color: "rgba(232,224,255,0.55)", fontFamily: "Exo 2, sans-serif", fontSize: "0.73rem", lineHeight: 1.5 }}>
+                      {genError}
+                    </div>
+                    <button onClick={() => { setGenError(null); generateGame() }}
+                      style={{ marginTop: "8px", padding: "5px 12px", borderRadius: "6px", background: "rgba(255,45,120,0.12)",
+                        border: "1px solid rgba(255,45,120,0.3)", color: "#FF6090",
+                        fontFamily: "Exo 2, sans-serif", fontSize: "0.73rem", cursor: "pointer" }}>
+                      🔄 Retry
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Result card */}
+              {genResult && !genError && (
+                <div style={{
+                  background: "rgba(34,255,170,0.06)", border: "1px solid rgba(34,255,170,0.25)",
                   borderRadius: "12px", padding: "16px",
                 }}>
-                  <div style={{ color: "#22FFAA", fontFamily: "Orbitron, monospace", fontSize: "0.8rem", fontWeight: 800, marginBottom: "8px" }}>
-                    ✅ {(genResult.title as string) ?? "Game Ready!"}
+                  {/* Header */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+                    <span style={{ fontSize: "1.3rem" }}>{GEN_TYPES.find(t => t.id === genType)?.icon}</span>
+                    <div>
+                      <div style={{ color: "#22FFAA", fontFamily: "Orbitron, monospace", fontSize: "0.78rem", fontWeight: 800 }}>
+                        ✅ {(genResult.title as string) ?? "Game Ready!"}
+                      </div>
+                      <div style={{ color: "rgba(255,255,255,0.4)", fontSize: "0.7rem", marginTop: "2px" }}>
+                        {(genResult.questions as unknown[])?.length ?? 0}{" "}
+                        {genType === "memory" ? "rounds" : genType === "wordbuilder" ? "challenges" : "questions"} ·{" "}
+                        {GEN_TYPES.find(t => t.id === genType)?.aptitude}
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.78rem", marginBottom: "12px" }}>
-                    {(genResult.questions as unknown[])?.length ?? 0} questions generated
-                  </div>
+
+                  {/* Action buttons — stacked vertically for clarity */}
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {/* Play Now — always shown, closes panel and launches game */}
+                    {onPlayGame && (
+                      <button onClick={() => { onPlayGame(genResult); onClose() }} style={{
+                        ...btnStyle,
+                        background: "linear-gradient(135deg, #A855F7, #00D4FF)",
+                        color: "#fff", fontWeight: 800, fontSize: "0.82rem",
+                      }}>
+                        ▶ Play Now
+                      </button>
+                    )}
                     {onGameGenerated && (
                       <button onClick={() => onGameGenerated(genResult)} style={{
                         ...btnStyle, background: "linear-gradient(135deg, #22FFAA, #00D4FF)",
-                        color: "#0A0A1A", fontWeight: 800,
+                        color: "#0A0A1A", fontWeight: 700,
                       }}>
                         💾 Save to My Games
                       </button>
@@ -391,11 +507,17 @@ export const BlackbuckAI: React.FC<Props> = ({ isOpen, onClose, explainContext, 
                     {isAdmin && onPublishGame && (
                       <button onClick={() => onPublishGame(genResult)} style={{
                         ...btnStyle, background: "linear-gradient(135deg, #FF6B35, #FF3CAC)",
-                        color: "#fff", fontWeight: 800,
+                        color: "#fff", fontWeight: 700,
                       }}>
                         🌐 Publish to All Games
                       </button>
                     )}
+                    <button onClick={() => { setGenResult(null); setGenError(null) }} style={{
+                      ...btnStyle, background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.45)",
+                    }}>
+                      ⚡ Generate Another
+                    </button>
                   </div>
                 </div>
               )}

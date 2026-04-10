@@ -6,45 +6,168 @@
   "version": "1.0.0",
   "questions": [
     {
-      "id": "mem1", "type": "memory", "difficulty": "easy", "points": 200,
+      "id": "mem1",
+      "type": "memory",
+      "difficulty": "easy",
+      "points": 200,
       "instruction": "Match each word to its emoji!",
       "pairs": [
-        { "id": "sun",   "label": "Sun",   "emoji": "☀️" },
-        { "id": "moon",  "label": "Moon",  "emoji": "🌙" },
-        { "id": "star",  "label": "Star",  "emoji": "⭐" },
-        { "id": "heart", "label": "Heart", "emoji": "❤️" }
+        {
+          "id": "sun",
+          "label": "Sun",
+          "emoji": "\u2600\ufe0f"
+        },
+        {
+          "id": "moon",
+          "label": "Moon",
+          "emoji": "\ud83c\udf19"
+        },
+        {
+          "id": "star",
+          "label": "Star",
+          "emoji": "\u2b50"
+        },
+        {
+          "id": "heart",
+          "label": "Heart",
+          "emoji": "\u2764\ufe0f"
+        }
       ]
     },
     {
-      "id": "mem2", "type": "memory", "difficulty": "medium", "points": 300,
+      "id": "mem2",
+      "type": "memory",
+      "difficulty": "medium",
+      "points": 300,
       "instruction": "Match the animals to their emojis!",
       "pairs": [
-        { "id": "cat",  "label": "Cat",  "emoji": "🐱" },
-        { "id": "dog",  "label": "Dog",  "emoji": "🐶" },
-        { "id": "bird", "label": "Bird", "emoji": "🐦" },
-        { "id": "fish", "label": "Fish", "emoji": "🐟" },
-        { "id": "fox",  "label": "Fox",  "emoji": "🦊" }
+        {
+          "id": "cat",
+          "label": "Cat",
+          "emoji": "\ud83d\udc31"
+        },
+        {
+          "id": "dog",
+          "label": "Dog",
+          "emoji": "\ud83d\udc36"
+        },
+        {
+          "id": "bird",
+          "label": "Bird",
+          "emoji": "\ud83d\udc26"
+        },
+        {
+          "id": "fish",
+          "label": "Fish",
+          "emoji": "\ud83d\udc1f"
+        },
+        {
+          "id": "fox",
+          "label": "Fox",
+          "emoji": "\ud83e\udd8a"
+        }
       ]
     },
     {
-      "id": "mem3", "type": "memory", "difficulty": "hard", "points": 400,
-      "instruction": "Match the food items — all 6 pairs!",
+      "id": "mem3",
+      "type": "memory",
+      "difficulty": "hard",
+      "points": 400,
+      "instruction": "Match the food items \u2014 all 6 pairs!",
       "pairs": [
-        { "id": "pizza",  "label": "Pizza",  "emoji": "🍕" },
-        { "id": "sushi",  "label": "Sushi",  "emoji": "🍣" },
-        { "id": "burger", "label": "Burger", "emoji": "🍔" },
-        { "id": "ramen",  "label": "Ramen",  "emoji": "🍜" },
-        { "id": "taco",   "label": "Taco",   "emoji": "🌮" },
-        { "id": "ice",    "label": "Ice Cream","emoji": "🍦" }
+        {
+          "id": "pizza",
+          "label": "Pizza",
+          "emoji": "\ud83c\udf55"
+        },
+        {
+          "id": "sushi",
+          "label": "Sushi",
+          "emoji": "\ud83c\udf63"
+        },
+        {
+          "id": "burger",
+          "label": "Burger",
+          "emoji": "\ud83c\udf54"
+        },
+        {
+          "id": "ramen",
+          "label": "Ramen",
+          "emoji": "\ud83c\udf5c"
+        },
+        {
+          "id": "taco",
+          "label": "Taco",
+          "emoji": "\ud83c\udf2e"
+        },
+        {
+          "id": "ice",
+          "label": "Ice Cream",
+          "emoji": "\ud83c\udf66"
+        }
       ]
     }
   ],
   "levels": [
-    { "id": "mem-l1", "title": "Basic Match", "description": "4 pairs to find.", "questionIds": ["mem1"], "passingScore": 50 },
-    { "id": "mem-l2", "title": "Animal Match", "description": "5 pairs to find.", "questionIds": ["mem2"], "passingScore": 50, "unlockCondition": { "previousLevelId": "mem-l1", "minScore": 40 } },
-    { "id": "mem-l3", "title": "Food Match", "description": "6 pairs — test your memory!", "questionIds": ["mem3"], "passingScore": 60, "unlockCondition": { "previousLevelId": "mem-l2", "minScore": 50 } }
+    {
+      "id": "mem-l1",
+      "title": "Basic Match",
+      "description": "4 pairs to find.",
+      "questionIds": [
+        "mem1"
+      ],
+      "passingScore": 50
+    },
+    {
+      "id": "mem-l2",
+      "title": "Animal Match",
+      "description": "5 pairs to find.",
+      "questionIds": [
+        "mem2"
+      ],
+      "passingScore": 50,
+      "unlockCondition": {
+        "previousLevelId": "mem-l1",
+        "minScore": 40
+      }
+    },
+    {
+      "id": "mem-l3",
+      "title": "Food Match",
+      "description": "6 pairs \u2014 test your memory!",
+      "questionIds": [
+        "mem3"
+      ],
+      "passingScore": 60,
+      "unlockCondition": {
+        "previousLevelId": "mem-l2",
+        "minScore": 50
+      }
+    }
   ],
   "adaptiveRules": [],
-  "scoring": { "basePoints": 200, "timeBonus": false, "timeBonusPerSecond": 0, "streakMultiplier": false, "streakThreshold": 3, "streakMultiplierValue": 1 },
-  "ui": { "showTimer": false, "showProgress": true, "showStreak": false, "emoji": "🧠" }
+  "scoring": {
+    "basePoints": 200,
+    "timeBonus": false,
+    "timeBonusPerSecond": 0,
+    "streakMultiplier": false,
+    "streakThreshold": 3,
+    "streakMultiplierValue": 1
+  },
+  "ui": {
+    "showTimer": false,
+    "showProgress": true,
+    "showStreak": false,
+    "emoji": "\ud83e\udde0"
+  },
+  "learningOutcomes": [
+    "memory",
+    "focus",
+    "attention_to_detail"
+  ],
+  "aptitudeTags": [
+    "memory",
+    "focus",
+    "attention_to_detail"
+  ]
 }

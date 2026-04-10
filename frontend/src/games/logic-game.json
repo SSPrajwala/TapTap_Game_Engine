@@ -62,7 +62,7 @@
       "difficulty": "medium",
       "points": 200,
       "timeLimit": 45,
-      "prompt": "12 ÷ 3 = ?",
+      "prompt": "12 \u00f7 3 = ?",
       "options": [
         "2",
         "3",
@@ -104,7 +104,7 @@
         "9"
       ],
       "correctIndex": 2,
-      "explanation": "8 × 8 = 64.",
+      "explanation": "8 \u00d7 8 = 64.",
       "hint": "What number times itself gives 64?"
     },
     {
@@ -138,8 +138,8 @@
         "Only sometimes"
       ],
       "correctIndex": 0,
-      "explanation": "By transitivity: Bloops → Razzles → Lazzles.",
-      "hint": "Think A→B, B→C, therefore A→C."
+      "explanation": "By transitivity: Bloops \u2192 Razzles \u2192 Lazzles.",
+      "hint": "Think A\u2192B, B\u2192C, therefore A\u2192C."
     },
     {
       "id": "q-hard-2",
@@ -155,7 +155,7 @@
         "35"
       ],
       "correctIndex": 2,
-      "explanation": "15/100 × 200 = 30.",
+      "explanation": "15/100 \u00d7 200 = 30.",
       "hint": "10% of 200 is 20. Add half of that."
     },
     {
@@ -172,8 +172,8 @@
         "160 km"
       ],
       "correctIndex": 2,
-      "explanation": "60 × 2.5 = 150 km.",
-      "hint": "Distance = speed × time."
+      "explanation": "60 \u00d7 2.5 = 150 km.",
+      "hint": "Distance = speed \u00d7 time."
     },
     {
       "id": "q-hard-4",
@@ -189,7 +189,7 @@
         "31"
       ],
       "correctIndex": 2,
-      "explanation": "29 is prime. 25=5×5, 27=3×9.",
+      "explanation": "29 is prime. 25=5\u00d75, 27=3\u00d79.",
       "hint": "Check each: is it divisible by anything?"
     },
     {
@@ -230,7 +230,7 @@
   "levels": [
     {
       "id": "level-easy",
-      "title": "Level 1 — Easy",
+      "title": "Level 1 \u2014 Easy",
       "description": "Arithmetic warm-up.",
       "questionIds": [
         "q-easy-1",
@@ -243,7 +243,7 @@
     },
     {
       "id": "level-medium",
-      "title": "Level 2 — Medium",
+      "title": "Level 2 \u2014 Medium",
       "description": "Step it up.",
       "questionIds": [
         "q-medium-1",
@@ -259,7 +259,7 @@
     },
     {
       "id": "level-hard",
-      "title": "Level 3 — Hard",
+      "title": "Level 3 \u2014 Hard",
       "description": "Logic under pressure.",
       "questionIds": [
         "q-hard-1",
@@ -314,5 +314,15 @@
         }
       }
     }
+  ],
+  "learningOutcomes": [
+    "logical_reasoning",
+    "general_knowledge",
+    "attention_to_detail"
+  ],
+  "aptitudeTags": [
+    "logical_reasoning",
+    "general_knowledge",
+    "attention_to_detail"
   ]
 }

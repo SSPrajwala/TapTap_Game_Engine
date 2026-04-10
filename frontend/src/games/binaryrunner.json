@@ -5,7 +5,7 @@
   "plugin": "binaryrunner",
   "version": "1.0.0",
   "ui": {
-    "emoji": "🚀",
+    "emoji": "\ud83d\ude80",
     "showTimer": true,
     "showProgress": true,
     "showStreak": true,
@@ -25,113 +25,184 @@
       "type": "binaryrunner",
       "difficulty": "easy",
       "points": 600,
-      "instruction": "Stage 1 — AND & OR gates only. Switch lanes to answer!",
+      "instruction": "Stage 1 \u2014 AND & OR gates only. Switch lanes to answer!",
       "duration": 40,
-      "initialSpeed": 55,
-      "maxSpeed": 110,
-      "speedRampPerSec": 1.2,
-      "spawnInterval": 3.2,
-      "operations": ["AND", "OR"]
+      "initialSpeed": 35,
+      "maxSpeed": 70,
+      "speedRampPerSec": 0.7,
+      "spawnInterval": 5.0,
+      "operations": [
+        "AND",
+        "OR"
+      ]
     },
     {
       "id": "br-stage-2",
       "type": "binaryrunner",
       "difficulty": "easy",
       "points": 800,
-      "instruction": "Stage 2 — XOR joins the track!",
+      "instruction": "Stage 2 \u2014 XOR joins the track!",
       "duration": 40,
-      "initialSpeed": 65,
-      "maxSpeed": 130,
-      "speedRampPerSec": 1.5,
-      "spawnInterval": 2.8,
-      "operations": ["AND", "OR", "XOR"]
+      "initialSpeed": 42,
+      "maxSpeed": 85,
+      "speedRampPerSec": 0.9,
+      "spawnInterval": 4.5,
+      "operations": [
+        "AND",
+        "OR",
+        "XOR"
+      ]
     },
     {
       "id": "br-stage-3",
       "type": "binaryrunner",
       "difficulty": "medium",
       "points": 1100,
-      "instruction": "Stage 3 — Medium speed, all basic gates!",
+      "instruction": "Stage 3 \u2014 Medium speed, all basic gates!",
       "duration": 45,
-      "initialSpeed": 75,
-      "maxSpeed": 150,
-      "speedRampPerSec": 1.8,
-      "spawnInterval": 2.5,
-      "operations": ["AND", "OR", "XOR"]
+      "initialSpeed": 50,
+      "maxSpeed": 100,
+      "speedRampPerSec": 1.1,
+      "spawnInterval": 4.0,
+      "operations": [
+        "AND",
+        "OR",
+        "XOR"
+      ]
     },
     {
       "id": "br-stage-4",
       "type": "binaryrunner",
       "difficulty": "medium",
       "points": 1400,
-      "instruction": "Stage 4 — NAND gates are live. Think twice!",
+      "instruction": "Stage 4 \u2014 NAND gates are live. Think twice!",
       "duration": 45,
-      "initialSpeed": 85,
-      "maxSpeed": 165,
-      "speedRampPerSec": 2.0,
-      "spawnInterval": 2.3,
-      "operations": ["AND", "OR", "XOR", "NAND"]
+      "initialSpeed": 58,
+      "maxSpeed": 115,
+      "speedRampPerSec": 1.3,
+      "spawnInterval": 3.5,
+      "operations": [
+        "AND",
+        "OR",
+        "XOR",
+        "NAND"
+      ]
     },
     {
       "id": "br-stage-5",
       "type": "binaryrunner",
       "difficulty": "hard",
       "points": 1800,
-      "instruction": "Stage 5 — All five gates. Maximum speed approaching!",
+      "instruction": "Stage 5 \u2014 All five gates. Maximum speed approaching!",
       "duration": 50,
-      "initialSpeed": 95,
-      "maxSpeed": 185,
-      "speedRampPerSec": 2.4,
-      "spawnInterval": 2.0,
-      "operations": ["AND", "OR", "XOR", "NAND", "NOR"]
+      "initialSpeed": 66,
+      "maxSpeed": 130,
+      "speedRampPerSec": 1.6,
+      "spawnInterval": 3.0,
+      "operations": [
+        "AND",
+        "OR",
+        "XOR",
+        "NAND",
+        "NOR"
+      ]
     },
     {
       "id": "br-stage-6",
       "type": "binaryrunner",
       "difficulty": "hard",
       "points": 2200,
-      "instruction": "ELITE — All gates, blazing speed. Survive 50 seconds!",
+      "instruction": "ELITE \u2014 All gates, blazing speed. Survive 50 seconds!",
       "duration": 50,
-      "initialSpeed": 110,
-      "maxSpeed": 210,
-      "speedRampPerSec": 3.0,
-      "spawnInterval": 1.7,
-      "operations": ["AND", "OR", "XOR", "NAND", "NOR"]
+      "initialSpeed": 75,
+      "maxSpeed": 148,
+      "speedRampPerSec": 2.0,
+      "spawnInterval": 2.5,
+      "operations": [
+        "AND",
+        "OR",
+        "XOR",
+        "NAND",
+        "NOR"
+      ]
     }
   ],
   "levels": [
     {
       "id": "br-level-1",
       "title": "Boot Sequence",
-      "description": "Basic AND & OR gates — warm up your logic",
-      "questionIds": ["br-stage-1", "br-stage-2"],
+      "description": "Basic AND & OR gates \u2014 warm up your logic",
+      "questionIds": [
+        "br-stage-1",
+        "br-stage-2"
+      ],
       "passingScore": 700
     },
     {
       "id": "br-level-2",
       "title": "Logic Core",
-      "description": "XOR and medium speed — keep your focus",
-      "questionIds": ["br-stage-3", "br-stage-4"],
+      "description": "XOR and medium speed \u2014 keep your focus",
+      "questionIds": [
+        "br-stage-3",
+        "br-stage-4"
+      ],
       "passingScore": 1400,
-      "unlockCondition": { "previousLevelId": "br-level-1", "minScore": 700 }
+      "unlockCondition": {
+        "previousLevelId": "br-level-1",
+        "minScore": 700
+      }
     },
     {
       "id": "br-level-3",
       "title": "Kernel Panic",
-      "description": "All five gates at maximum velocity — elite only",
-      "questionIds": ["br-stage-5", "br-stage-6"],
+      "description": "All five gates at maximum velocity \u2014 elite only",
+      "questionIds": [
+        "br-stage-5",
+        "br-stage-6"
+      ],
       "passingScore": 2200,
-      "unlockCondition": { "previousLevelId": "br-level-2", "minScore": 1400 }
+      "unlockCondition": {
+        "previousLevelId": "br-level-2",
+        "minScore": 1400
+      }
     }
   ],
   "adaptiveRules": [
     {
-      "condition": { "metric": "accuracy", "operator": ">=", "value": 0.9 },
-      "action": { "type": "adjustDifficulty", "payload": { "difficulty": "hard" } }
+      "condition": {
+        "metric": "accuracy",
+        "operator": ">=",
+        "value": 0.9
+      },
+      "action": {
+        "type": "adjustDifficulty",
+        "payload": {
+          "difficulty": "hard"
+        }
+      }
     },
     {
-      "condition": { "metric": "accuracy", "operator": "<", "value": 0.4 },
-      "action": { "type": "adjustDifficulty", "payload": { "difficulty": "easy" } }
+      "condition": {
+        "metric": "accuracy",
+        "operator": "<",
+        "value": 0.4
+      },
+      "action": {
+        "type": "adjustDifficulty",
+        "payload": {
+          "difficulty": "easy"
+        }
+      }
     }
+  ],
+  "learningOutcomes": [
+    "algorithms",
+    "logical_reasoning",
+    "coding"
+  ],
+  "aptitudeTags": [
+    "algorithms",
+    "logical_reasoning",
+    "coding"
   ]
 }

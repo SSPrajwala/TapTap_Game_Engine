@@ -6,6 +6,8 @@ import { LeaderboardService } from "../engine/LeaderboardService"
 import { Confetti }           from "./ui/Confetti"
 import { BlackbuckAI }        from "./ui/BlackbuckAI"
 import { useAuth }            from "../context/AuthContext"
+import { getGameSkills }      from "../utils/GameSkillMapper"
+import { SoundEngine }        from "../services/SoundEngine"
 
 interface Props {
   config:       GameConfig
@@ -73,6 +75,57 @@ function normalizeConfig(raw: GameConfig): GameConfig {
   return { ...raw, questions, levels, scoring } as GameConfig
 }
 
+// ── Share Score Button ────────────────────────────────────────────────────────
+const ShareScoreButton: React.FC<{ gameName: string; score: number; accuracy: number; rank: number }> = ({ gameName, score, accuracy, rank }) => {
+  const [copied, setCopied] = useState(false)
+
+  const handleShare = async () => {
+    const baseUrl = window.location.origin
+    const challengeUrl = `${baseUrl}?utm_source=share&utm_game=${encodeURIComponent(gameName)}&challenge=${score}`
+    const text = `🎮 I scored ${score.toLocaleString()} pts on "${gameName}" — Rank #${rank} with ${accuracy}% accuracy! 🏆\n\nThink you can beat me? Come play, learn & challenge me!\n👉 ${challengeUrl}`
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "TapTap Game Engine Challenge", text, url: challengeUrl })
+        return
+      } catch { /* user cancelled — fall through to clipboard */ }
+    }
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 3000)
+    } catch { /* ignore */ }
+  }
+
+  return (
+    <button
+      onClick={handleShare}
+      title="Share your score & challenge friends"
+      style={{
+        position: "absolute", top: "18px", right: "18px",
+        display: "flex", alignItems: "center", gap: "6px",
+        padding: "8px 14px", borderRadius: "99px",
+        background: copied ? "rgba(34,255,170,0.15)" : "rgba(168,85,247,0.12)",
+        border: copied ? "1px solid rgba(34,255,170,0.4)" : "1px solid rgba(168,85,247,0.3)",
+        color: copied ? "#22FFAA" : "#C084FC",
+        fontFamily: "Exo 2, sans-serif", fontWeight: 700, fontSize: "0.78rem",
+        cursor: "pointer", transition: "all 0.25s",
+      }}>
+      {copied ? (
+        <>✓ Copied!</>
+      ) : (
+        <>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+          </svg>
+          Challenge Friends
+        </>
+      )}
+    </button>
+  )
+}
+
 export const GameRenderer: React.FC<Props> = ({ config: rawConfig, onBack, onCorrect, onWrong, onVictory }) => {
   // Normalise config once — fixes old AI games with wrong field names / IDs
   const config = useMemo(() => normalizeConfig(rawConfig), [rawConfig])
@@ -86,14 +139,33 @@ export const GameRenderer: React.FC<Props> = ({ config: rawConfig, onBack, onCor
 
   const { user, token } = useAuth()
 
-  // ── Deer mascot + victory reactions ──────────────────────────────────────────
+  // ── Deer mascot + victory reactions + sounds ─────────────────────────────────
+  // ── Streak milestone sounds ───────────────────────────────────────────────────
+  const prevStreakRef = useRef(0)
+  useEffect(() => {
+    const s = state.stats.streak
+    if (s > prevStreakRef.current && (s === 3 || s === 5 || s === 10)) {
+      SoundEngine.streak()
+    }
+    prevStreakRef.current = s
+  }, [state.stats.streak])
+
   useEffect(() => engine.on(event => {
     if (event.type === "ANSWER_SUBMITTED") {
-      if (event.payload.correct) onCorrect?.()
-      else                       onWrong?.()
+      if (event.payload.correct) {
+        onCorrect?.()
+      } else {
+        onWrong?.()
+        prevStreakRef.current = 0
+      }
     }
-    if (event.type === "GAME_OVER" || event.type === "LEVEL_COMPLETE") {
+    if (event.type === "LEVEL_COMPLETE") {
       onVictory?.()
+      SoundEngine.levelComplete()
+    }
+    if (event.type === "GAME_OVER") {
+      onVictory?.()
+      SoundEngine.gameWin()
     }
   }), [engine, onCorrect, onWrong, onVictory])
 
@@ -131,19 +203,31 @@ export const GameRenderer: React.FC<Props> = ({ config: rawConfig, onBack, onCor
   // After a motion game wave ends (answered → true), automatically fire
   // NEXT_QUESTION after 2.4s so the plugin's own result screen has time to show.
   // This means players never need to manually click "Next →" between waves.
-  const answeredRef = useRef(false)
+  // NOTE: We store the timeout ID in a ref rather than returning a cleanup function.
+  // Returning a cleanup from an effect with no deps array would cancel the timeout
+  // on EVERY re-render, preventing the auto-advance from ever firing.
+  const autoAdvanceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     if (!isMotionGame) return
+    // Only auto-advance during active gameplay — never on levelComplete / gameOver screens
+    if (state.status !== "playing") {
+      if (autoAdvanceRef.current !== null) {
+        clearTimeout(autoAdvanceRef.current)
+        autoAdvanceRef.current = null
+      }
+      return
+    }
     const answered = currentQuestion ? state.answeredIds.has(currentQuestion.id) : false
-    if (answered && !answeredRef.current) {
-      answeredRef.current = true
-      const t = setTimeout(() => {
-        answeredRef.current = false
+    if (answered && autoAdvanceRef.current === null) {
+      autoAdvanceRef.current = setTimeout(() => {
+        autoAdvanceRef.current = null
         send({ type: "NEXT_QUESTION" })
       }, 2400)
-      return () => clearTimeout(t)
     }
-    if (!answered) answeredRef.current = false
+    if (!answered && autoAdvanceRef.current !== null) {
+      clearTimeout(autoAdvanceRef.current)
+      autoAdvanceRef.current = null
+    }
   })
 
   const plugin = pluginRegistry.get(config.plugin)
@@ -174,7 +258,11 @@ export const GameRenderer: React.FC<Props> = ({ config: rawConfig, onBack, onCor
       timeTaken,
       difficulty:    state.stats.difficulty,
     })
-    const result = await LeaderboardService.submitToAPI(entry, token, config.learningOutcomes)
+    // Use config learningOutcomes; fall back to skill mapper so skills always update
+    const outcomes = (config.learningOutcomes?.length)
+      ? config.learningOutcomes
+      : getGameSkills(config)
+    const result = await LeaderboardService.submitToAPI(entry, token, outcomes)
     setApiStatus(result.message)
     setScoreSaved(true)
     setSaving(false)
@@ -208,7 +296,7 @@ export const GameRenderer: React.FC<Props> = ({ config: rawConfig, onBack, onCor
             </div>
           ))}
         </div>
-        <button className="btn-primary" onClick={() => send({ type: "START_GAME" })}>
+        <button className="btn-primary" onClick={() => { SoundEngine.click(); send({ type: "START_GAME" }) }}>
           Start Game →
         </button>
       </div>
@@ -276,6 +364,12 @@ export const GameRenderer: React.FC<Props> = ({ config: rawConfig, onBack, onCor
             {apiStatus && <div className="api-status">{apiStatus}</div>}
           </div>
         )}
+        <ShareScoreButton
+          gameName={rawConfig.title}
+          score={state.stats.score}
+          accuracy={Math.round(state.stats.accuracy * 100)}
+          rank={rank}
+        />
         <div className="complete-actions">
           <button className="btn-primary" onClick={handleRestart}>Play Again</button>
           <button className="btn-ghost" onClick={onBack}>← Library</button>
@@ -378,7 +472,7 @@ export const GameRenderer: React.FC<Props> = ({ config: rawConfig, onBack, onCor
                 🤖 Why?
               </button>
             )}
-            <button className="btn-primary btn-sm" onClick={() => send({ type: "NEXT_QUESTION" })}>
+            <button className="btn-primary btn-sm" onClick={() => { SoundEngine.click(); send({ type: "NEXT_QUESTION" }) }}>
               {doneQ + 1 < totalQ ? "Next →" : "Finish Level →"}
             </button>
           </div>

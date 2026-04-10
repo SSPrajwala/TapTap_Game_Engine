@@ -21,6 +21,7 @@ import type {
   Question,
   AnswerResult,
 } from "../../types/engine.types"
+import { SoundEngine } from "../../services/SoundEngine"
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -44,6 +45,8 @@ const QuizComponent: React.FC<PluginRenderProps<QuizQuestion>> = ({
     setRevealed(true)
 
     const correct = index === question.correctIndex
+    if (correct) SoundEngine.correct()
+    else         SoundEngine.wrong()
     // timeTaken is measured by the engine via questionStartTime;
     // we pass 0 here and the reducer computes actual elapsed time.
     const result: AnswerResult = {
