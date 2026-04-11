@@ -507,7 +507,7 @@ export const AdminPanel: React.FC<Props> = ({ games, onBack, onSave, adminToken,
     </div>
   )
 
-  const unsupported = !["quiz", "flashcard", "memory", "wordbuilder", "puzzle", "tapblitz", "binaryrunner"].includes(game.plugin)
+  const unsupported = game ? !["quiz", "flashcard", "memory", "wordbuilder", "puzzle", "tapblitz", "binaryrunner"].includes(game.plugin) : false
 
   return (
     <div className="page-wrap">
@@ -584,7 +584,18 @@ export const AdminPanel: React.FC<Props> = ({ games, onBack, onSave, adminToken,
       </div>
 
       {/* ── QUESTIONS TAB ─────────────────────────────────────────────────── */}
-      {tab === "questions" && (
+      {tab === "questions" && !game && (
+        <div className="admin-content">
+          <div className="admin-form-panel">
+            <div style={{ textAlign: "center", padding: "60px 20px", color: "rgba(232,224,255,0.4)", fontFamily: "Exo 2, sans-serif" }}>
+              <div style={{ fontSize: "3rem", marginBottom: "16px" }}>🎮</div>
+              <div style={{ fontSize: "1.1rem", marginBottom: "8px" }}>No game selected</div>
+              <div style={{ fontSize: "0.85rem" }}>Select a game from the tabs above, or create a new one.</div>
+            </div>
+          </div>
+        </div>
+      )}
+      {tab === "questions" && game && (
         <div className="admin-content">
           {unsupported ? (
             <div style={{ padding: "24px", textAlign: "center", color: "rgba(232,224,255,0.4)", fontFamily: "Exo 2, sans-serif", fontSize: "0.85rem" }}>
@@ -991,7 +1002,18 @@ export const AdminPanel: React.FC<Props> = ({ games, onBack, onSave, adminToken,
       )}
 
       {/* ── LEVELS TAB ────────────────────────────────────────────────────── */}
-      {tab === "levels" && (
+      {tab === "levels" && !game && (
+        <div className="admin-content">
+          <div className="admin-form-panel">
+            <div style={{ textAlign: "center", padding: "60px 20px", color: "rgba(232,224,255,0.4)", fontFamily: "Exo 2, sans-serif" }}>
+              <div style={{ fontSize: "3rem", marginBottom: "16px" }}>🏆</div>
+              <div style={{ fontSize: "1.1rem", marginBottom: "8px" }}>No game selected</div>
+              <div style={{ fontSize: "0.85rem" }}>Select a game from the tabs above, or create a new one.</div>
+            </div>
+          </div>
+        </div>
+      )}
+      {tab === "levels" && game && (
         <div className="admin-content">
           {game.levels.map((level, li) => (
             <div key={level.id} className="admin-level-card">
@@ -1045,7 +1067,18 @@ export const AdminPanel: React.FC<Props> = ({ games, onBack, onSave, adminToken,
       )}
 
       {/* ── SETTINGS TAB ──────────────────────────────────────────────────── */}
-      {tab === "settings" && (
+      {tab === "settings" && !game && (
+        <div className="admin-content">
+          <div className="admin-form-panel">
+            <div style={{ textAlign: "center", padding: "60px 20px", color: "rgba(232,224,255,0.4)", fontFamily: "Exo 2, sans-serif" }}>
+              <div style={{ fontSize: "3rem", marginBottom: "16px" }}>🎮</div>
+              <div style={{ fontSize: "1.1rem", marginBottom: "8px" }}>No game selected</div>
+              <div style={{ fontSize: "0.85rem" }}>Select a game from the dropdown above, or create a new one.</div>
+            </div>
+          </div>
+        </div>
+      )}
+      {tab === "settings" && game && (
         <div className="admin-content">
           <div className="admin-form-panel">
             <h3 className="admin-section-title">Game Settings</h3>
