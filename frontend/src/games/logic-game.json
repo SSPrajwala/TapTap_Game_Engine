@@ -324,5 +324,21 @@
     "logical_reasoning",
     "general_knowledge",
     "attention_to_detail"
-  ]
+  ],
+  "scoring": {
+    "basePoints": 100,
+    "timeBonus": true,
+    "timeBonusPerSecond": 5,
+    "streakMultiplier": true,
+    "streakThreshold": 3,
+    "streakMultiplierValue": 1.5,
+    "penalties": false,
+    "penaltyPerWrong": 0
+  },
+  "ui": {
+    "emoji": "\ud83e\udde0",
+    "showTimer": true,
+    "showProgress": true,
+    "showStreak": true
+  }
 }

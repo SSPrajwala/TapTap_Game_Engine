@@ -563,7 +563,7 @@ function AppInner() {
             onClick={handleAdminClick}
             title={isAdmin ? `Admin: ${adminName}` : "Admin (requires access code)"}
           >
-            {isAdmin ? `🔓 Admin (${adminName.split(" ")[0]})` : "⚙️ Admin"}
+            {isAdmin ? `🔓 Admin (${adminName.split(" ")[0]})` : "🛡️ Admin"}
           </button>
         </nav>
 

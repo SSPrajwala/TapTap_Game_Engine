@@ -112,7 +112,7 @@ const WordBuilderComponent: React.FC<PluginRenderProps<WordBuilderQuestion>> = (
       <div className="q-meta">
         <span className={`badge badge-${question.difficulty}`}>{question.difficulty}</span>
         <span className="pts-tag">+{question.points} pts</span>
-        {config.ui?.showTimer && (
+        {config.ui?.showTimer && !submitted && (
           <span style={{
             fontFamily: "Orbitron,monospace", fontSize: "0.72rem", fontWeight: 700,
             color: timerColor, marginLeft: "auto",

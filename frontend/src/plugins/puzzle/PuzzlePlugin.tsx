@@ -10,14 +10,21 @@ import type {
 
 const PuzzleComponent: React.FC<PluginRenderProps<PuzzleQuestion>> = ({
   question,
+  config,
   onAnswer,
   onRequestHint,
   isShowingHint,
+  timeRemaining,
 }) => {
   const [inputs,    setInputs]    = useState<string[]>(() => Array(question.sequenceLength).fill(""))
   const [submitted, setSubmitted] = useState(false)
   const [correct,   setCorrect]   = useState<boolean | null>(null)
   const submittedRef = useRef(false)
+
+  const timeLimit  = question.timeLimit ?? 30
+  const timeLeft   = timeRemaining ?? timeLimit
+  const timerPct   = Math.max(0, Math.min(100, (timeLeft / timeLimit) * 100))
+  const timerColor = timeLeft <= 5 ? "#FF6090" : timeLeft <= 10 ? "#FFD700" : "#22FFAA"
 
   // No reset effect needed — GameRenderer remounts this component via key={questionId}
 
@@ -82,7 +89,32 @@ const PuzzleComponent: React.FC<PluginRenderProps<PuzzleQuestion>> = ({
       <div className="q-meta">
         <span className={`badge badge-${question.difficulty}`}>{question.difficulty}</span>
         <span className="pts-label">+{question.points} pts</span>
+        {config.ui?.showTimer && !submitted && (
+          <span style={{
+            fontFamily: "Orbitron,monospace", fontSize: "0.72rem", fontWeight: 700,
+            color: timerColor, marginLeft: "auto",
+          }}>
+            ⏱ {timeLeft}s
+          </span>
+        )}
       </div>
+
+      {/* Timer bar */}
+      {config.ui?.showTimer && !submitted && (
+        <div style={{ marginBottom: "12px" }}>
+          <div style={{
+            height: "5px", borderRadius: "99px",
+            background: "rgba(255,255,255,0.08)", overflow: "hidden",
+          }}>
+            <div style={{
+              height: "100%", borderRadius: "99px",
+              width: `${timerPct}%`,
+              background: `linear-gradient(90deg, ${timerColor}, ${timerColor}88)`,
+              transition: "width 1s linear, background 0.5s",
+            }} />
+          </div>
+        </div>
+      )}
 
       <h2 className="q-prompt">{question.instruction}</h2>
 

@@ -18,7 +18,8 @@
       ],
       "sequenceLength": 2,
       "instruction": "What are the next 2 numbers?",
-      "hint": "Add 2 each time."
+      "hint": "Add 2 each time.",
+      "timeLimit": 30
     },
     {
       "id": "p-easy-2",
@@ -33,7 +34,8 @@
       ],
       "sequenceLength": 2,
       "instruction": "Continue this sequence.",
-      "hint": "Count by fives."
+      "hint": "Count by fives.",
+      "timeLimit": 30
     },
     {
       "id": "p-easy-3",
@@ -48,7 +50,8 @@
       ],
       "sequenceLength": 2,
       "instruction": "Continue the odd number pattern.",
-      "hint": "Add 2 each time."
+      "hint": "Add 2 each time.",
+      "timeLimit": 30
     },
     {
       "id": "p-medium-1",
@@ -63,7 +66,8 @@
       ],
       "sequenceLength": 3,
       "instruction": "Find the next 3 values.",
-      "hint": "Multiples of 3."
+      "hint": "Multiples of 3.",
+      "timeLimit": 25
     },
     {
       "id": "p-medium-2",
@@ -78,7 +82,8 @@
       ],
       "sequenceLength": 2,
       "instruction": "Continue the descending sequence.",
-      "hint": "Subtract 10 each time."
+      "hint": "Subtract 10 each time.",
+      "timeLimit": 25
     },
     {
       "id": "p-medium-3",
@@ -93,7 +98,8 @@
       ],
       "sequenceLength": 3,
       "instruction": "Extend this pattern by 3 numbers.",
-      "hint": "Multiples of 7."
+      "hint": "Multiples of 7.",
+      "timeLimit": 25
     },
     {
       "id": "p-hard-1",
@@ -108,7 +114,8 @@
       ],
       "sequenceLength": 2,
       "instruction": "What comes next? (tricky!)",
-      "hint": "Think square numbers: 1\u00b2, 2\u00b2, 3\u00b2, 4\u00b2..."
+      "hint": "Think square numbers: 1\u00b2, 2\u00b2, 3\u00b2, 4\u00b2...",
+      "timeLimit": 20
     },
     {
       "id": "p-hard-2",
@@ -123,7 +130,8 @@
       ],
       "sequenceLength": 2,
       "instruction": "Continue this halving sequence.",
-      "hint": "Each number is halved."
+      "hint": "Each number is halved.",
+      "timeLimit": 20
     }
   ],
   "levels": [
